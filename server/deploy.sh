@@ -37,14 +37,6 @@ else
   TARGET_NAME=$BLUE_NAME
   OLD_NAME=$GREEN_NAME
 fi
-else
-  # Default to blue if green is running or neither is running
-  CURRENT_COLOR="green"
-  TARGET_COLOR="blue"
-  TARGET_PORT=$BLUE_PORT
-  TARGET_NAME=$BLUE_NAME
-  OLD_NAME=$GREEN_NAME
-fi
 
 echo "🔵 Current active: $CURRENT_COLOR (or none)"
 echo "🟢 Deploying to: $TARGET_COLOR ($TARGET_NAME) on port $TARGET_PORT"
