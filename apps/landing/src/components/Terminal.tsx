@@ -66,7 +66,7 @@ export function Terminal() {
         {step >= 3 && (
           <div className="space-y-2">
             <p className="text-fuchsia-400">
-              🌐 Tunnel ready: https://tunnel.outray.dev
+              🌐 Tunnel ready: https://tunnel.outray.app
             </p>
             <p className="text-yellow-400">
               🥹 Don't close this or I'll cry softly.
