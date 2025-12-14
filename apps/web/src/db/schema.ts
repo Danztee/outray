@@ -3,17 +3,18 @@ import {
   sessions,
   users,
   verifications,
-  accountsRelations,
-  sessionsRelations,
-  usersRelations,
+  organizations,
+  members,
+  invitations,
 } from "./auth-schema";
 
 import {
   tunnels,
-  apiKeys,
+  authTokens,
   tunnelsRelations,
-  apiKeysRelations,
+  authTokensRelations,
   usersAppRelations,
+  organizationsAppRelations,
 } from "./app-schema";
 
 export {
@@ -21,12 +22,13 @@ export {
   sessions,
   users,
   verifications,
-  accountsRelations,
-  sessionsRelations,
-  usersRelations,
+  organizations,
+  members,
+  invitations,
   tunnels,
-  apiKeys,
+  authTokens,
   tunnelsRelations,
-  apiKeysRelations,
+  authTokensRelations,
   usersAppRelations,
+  organizationsAppRelations,
 };
