@@ -40,6 +40,7 @@ export const Route = createFileRoute("/api/tunnel/auth")({
 
           return json({
             valid: true,
+            userId: tokenRecord.userId,
             organizationId: tokenRecord.organizationId,
             organization: {
               id: tokenRecord.organization.id,
