@@ -7,21 +7,31 @@ interface PendingRequest {
   resolve: (response: ResponseMessage) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
+  tunnelId: string;
 }
 
 interface TunnelRouterOptions {
   redis?: Redis;
   ttlSeconds?: number;
   heartbeatIntervalMs?: number;
+  requestTimeoutMs?: number;
+}
+
+export interface TunnelMetadata {
+  organizationId?: string;
+  userId?: string;
+  dbTunnelId?: string;
 }
 
 export class TunnelRouter {
   private tunnels = new Map<string, WebSocket>();
+  private tunnelMetadata = new Map<string, TunnelMetadata>();
   private pendingRequests = new Map<string, PendingRequest>();
   private redis?: Redis;
   private readonly serverId = generateId("tunnel-server");
   private readonly ttlSeconds: number;
   private readonly heartbeatIntervalMs: number;
+  private readonly requestTimeoutMs: number;
   private heartbeatTimer?: NodeJS.Timeout;
 
   constructor(options: TunnelRouterOptions = {}) {
@@ -31,23 +41,42 @@ export class TunnelRouter {
       5000,
       options.heartbeatIntervalMs ?? 20000,
     );
+    this.requestTimeoutMs = options.requestTimeoutMs ?? 60000;
 
     if (this.redis) {
       this.startHeartbeat();
     }
   }
 
-  async registerTunnel(tunnelId: string, ws: WebSocket): Promise<boolean> {
+  async registerTunnel(
+    tunnelId: string,
+    ws: WebSocket,
+    metadata?: TunnelMetadata,
+  ): Promise<boolean> {
     this.tunnels.set(tunnelId, ws);
-    const persisted = await this.persistTunnelState(tunnelId, "XX");
+    if (metadata) {
+      this.tunnelMetadata.set(tunnelId, metadata);
+    }
+    const persisted = await this.persistTunnelState(tunnelId, "XX", metadata);
     if (!persisted) {
       this.tunnels.delete(tunnelId);
+      this.tunnelMetadata.delete(tunnelId);
     }
     return persisted;
   }
 
   async unregisterTunnel(tunnelId: string): Promise<void> {
     this.tunnels.delete(tunnelId);
+    this.tunnelMetadata.delete(tunnelId);
+
+    for (const [requestId, req] of this.pendingRequests.entries()) {
+      if (req.tunnelId === tunnelId) {
+        clearTimeout(req.timeout);
+        this.pendingRequests.delete(requestId);
+        req.reject(new Error("Tunnel disconnected"));
+      }
+    }
+
     if (this.redis) {
       try {
         await this.redis.del(this.redisKey(tunnelId));
@@ -57,12 +86,15 @@ export class TunnelRouter {
     }
   }
 
-  async reserveTunnel(tunnelId: string): Promise<boolean> {
+  async reserveTunnel(
+    tunnelId: string,
+    metadata?: TunnelMetadata,
+  ): Promise<boolean> {
     if (!this.redis) {
       return !this.tunnels.has(tunnelId);
     }
 
-    return this.persistTunnelState(tunnelId, "NX");
+    return this.persistTunnelState(tunnelId, "NX", metadata);
   }
 
   async shutdown(): Promise<void> {
@@ -86,6 +118,10 @@ export class TunnelRouter {
         }
       }
     }
+  }
+
+  getTunnelMetadata(tunnelId: string): TunnelMetadata | undefined {
+    return this.tunnelMetadata.get(tunnelId);
   }
 
   getTunnel(tunnelId: string): WebSocket | undefined {
@@ -134,10 +170,18 @@ export class TunnelRouter {
     return new Promise<ResponseMessage>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(requestId);
+        console.error(
+          `Request timeout for tunnel ${tunnelId}, request ${requestId}`,
+        );
         reject(new Error("Request timeout"));
-      }, 30000);
+      }, this.requestTimeoutMs);
 
-      this.pendingRequests.set(requestId, { resolve, reject, timeout });
+      this.pendingRequests.set(requestId, {
+        resolve,
+        reject,
+        timeout,
+        tunnelId,
+      });
 
       ws.send(Protocol.encode(requestMessage));
     });
@@ -150,28 +194,64 @@ export class TunnelRouter {
   private async persistTunnelState(
     tunnelId: string,
     mode: "NX" | "XX",
+    metadata?: TunnelMetadata,
   ): Promise<boolean> {
     if (!this.redis) {
       return true;
     }
 
-    const metadata = JSON.stringify({
+    const redisValue = JSON.stringify({
       serverId: this.serverId,
       updatedAt: Date.now(),
+      ...metadata,
     });
 
     try {
       const key = this.redisKey(tunnelId);
-      const result =
-        mode === "NX"
-          ? await this.redis.set(key, metadata, "EX", this.ttlSeconds, "NX")
-          : await this.redis.set(key, metadata, "EX", this.ttlSeconds, "XX");
 
-      if (mode === "XX" && result === null) {
-        return this.persistTunnelState(tunnelId, "NX");
+      if (mode === "NX") {
+        const result = await this.redis.set(
+          key,
+          redisValue,
+          "EX",
+          this.ttlSeconds,
+          "NX",
+        );
+        if (result === "OK") return true;
+
+        // If NX failed, check if we can take over
+        if (metadata?.userId) {
+          const existing = await this.redis.get(key);
+          if (existing) {
+            try {
+              const parsed = JSON.parse(existing);
+              if (parsed.userId === metadata.userId) {
+                // Same user, allow takeover
+                await this.redis.set(key, redisValue, "EX", this.ttlSeconds);
+                return true;
+              }
+            } catch (e) {
+              // ignore parse error
+            }
+          }
+        }
+        return false;
+      } else {
+        // XX mode
+        const result = await this.redis.set(
+          key,
+          redisValue,
+          "EX",
+          this.ttlSeconds,
+          "XX",
+        );
+
+        if (result === null) {
+          return this.persistTunnelState(tunnelId, "NX", metadata);
+        }
+
+        return true;
       }
-
-      return result === null ? false : true;
     } catch (error) {
       console.error("Failed to persist tunnel state", error);
       return false;
@@ -194,9 +274,10 @@ export class TunnelRouter {
     }
 
     await Promise.all(
-      Array.from(this.tunnels.keys()).map((tunnelId) =>
-        this.persistTunnelState(tunnelId, "XX"),
-      ),
+      Array.from(this.tunnels.keys()).map((tunnelId) => {
+        const metadata = this.tunnelMetadata.get(tunnelId);
+        return this.persistTunnelState(tunnelId, "XX", metadata);
+      }),
     );
   }
 }
