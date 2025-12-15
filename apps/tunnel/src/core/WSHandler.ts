@@ -72,9 +72,9 @@ export class WSHandler {
     subdomain: string,
     userId: string,
     organizationId: string,
-  ): Promise<void> {
+  ): Promise<string | null> {
     try {
-      await fetch(`${this.webApiUrl}/tunnel/register`, {
+      const response = await fetch(`${this.webApiUrl}/tunnel/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -83,8 +83,14 @@ export class WSHandler {
           organizationId,
         }),
       });
+      const data = (await response.json()) as {
+        success: boolean;
+        tunnelId?: string;
+      };
+      return data.tunnelId || null;
     } catch (error) {
       console.error("Failed to register tunnel in database:", error);
+      return null;
     }
   }
 
@@ -136,8 +142,13 @@ export class WSHandler {
                 console.log(`Subdomain denied: ${check.error}`);
                 requestedSubdomain = undefined;
               } else {
-                reservationAcquired =
-                  await this.router.reserveTunnel(requestedSubdomain);
+                reservationAcquired = await this.router.reserveTunnel(
+                  requestedSubdomain,
+                  {
+                    organizationId,
+                    userId,
+                  },
+                );
 
                 if (!reservationAcquired) {
                   console.log(
@@ -154,8 +165,13 @@ export class WSHandler {
                 const candidate = generateSubdomain();
                 const check = await this.checkSubdomain(candidate);
                 if (check.allowed) {
-                  reservationAcquired =
-                    await this.router.reserveTunnel(candidate);
+                  reservationAcquired = await this.router.reserveTunnel(
+                    candidate,
+                    {
+                      organizationId,
+                      userId,
+                    },
+                  );
                   if (reservationAcquired) {
                     requestedSubdomain = candidate;
                     break;
@@ -166,7 +182,13 @@ export class WSHandler {
 
               if (!reservationAcquired) {
                 const fallback = generateId("tunnel");
-                reservationAcquired = await this.router.reserveTunnel(fallback);
+                reservationAcquired = await this.router.reserveTunnel(
+                  fallback,
+                  {
+                    organizationId,
+                    userId,
+                  },
+                );
                 if (reservationAcquired) {
                   requestedSubdomain = fallback;
                 }
@@ -187,7 +209,22 @@ export class WSHandler {
             }
 
             tunnelId = requestedSubdomain;
-            const registered = await this.router.registerTunnel(tunnelId, ws);
+
+            let dbTunnelId: string | undefined;
+            if (userId && organizationId) {
+              const id = await this.registerTunnelInDatabase(
+                tunnelId,
+                userId,
+                organizationId,
+              );
+              if (id) dbTunnelId = id;
+            }
+
+            const registered = await this.router.registerTunnel(tunnelId, ws, {
+              organizationId,
+              userId,
+              dbTunnelId,
+            });
 
             if (!registered) {
               await this.router.unregisterTunnel(tunnelId);
@@ -201,14 +238,6 @@ export class WSHandler {
               );
               ws.close();
               return;
-            }
-
-            if (userId && organizationId) {
-              await this.registerTunnelInDatabase(
-                tunnelId,
-                userId,
-                organizationId,
-              );
             }
 
             const protocol =
