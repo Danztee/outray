@@ -4,6 +4,7 @@ import { TunnelRouter } from "./core/TunnelRouter";
 import { WSHandler } from "./core/WSHandler";
 import { HTTPProxy } from "./core/HTTPProxy";
 import { config } from "./config";
+import { checkClickHouseConnection } from "./lib/clickhouse";
 
 const redis = new Redis(config.redisUrl, {
   lazyConnect: true,
@@ -27,6 +28,7 @@ const router = new TunnelRouter({
   redis,
   ttlSeconds: config.redisTunnelTtlSeconds,
   heartbeatIntervalMs: config.redisHeartbeatIntervalMs,
+  requestTimeoutMs: config.requestTimeoutMs,
 });
 const httpServer = createServer();
 const proxy = new HTTPProxy(router, config.baseDomain);
@@ -48,6 +50,7 @@ httpServer.on("request", (req, res) => {
 httpServer.listen(config.port, () => {
   console.log(`OutRay Server running on port ${config.port}`);
   console.log(`Base domain: ${config.baseDomain}`);
+  void checkClickHouseConnection();
 });
 
 const shutdown = async () => {
