@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db";
-import { subdomains, tunnels } from "../../../db/app-schema";
+import { subdomains } from "../../../db/app-schema";
 
 export const Route = createFileRoute("/api/tunnel/check-subdomain")({
   server: {
@@ -22,10 +22,9 @@ export const Route = createFileRoute("/api/tunnel/check-subdomain")({
           const existingSubdomain = await db
             .select({
               subdomain: subdomains.subdomain,
-              organizationId: tunnels.organizationId,
+              organizationId: subdomains.organizationId,
             })
             .from(subdomains)
-            .leftJoin(tunnels, eq(subdomains.tunnelId, tunnels.id))
             .where(eq(subdomains.subdomain, subdomain))
             .limit(1);
 
