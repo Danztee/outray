@@ -3,6 +3,7 @@
 
 @theme {
   --font-family-sans: "Geom", sans-serif;
+  --color-accent: #ffa62b;
 }
 
 body {
