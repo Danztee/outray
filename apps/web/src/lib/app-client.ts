@@ -37,6 +37,7 @@ export interface Subdomain {
 
 interface CreateAuthTokenParams {
   name: string;
+  organizationId: string;
 }
 
 interface DeleteAuthTokenParams {
@@ -89,8 +90,10 @@ export const appClient = {
   },
 
   authTokens: {
-    list: async () =>
-      apiCall<{ tokens: AuthToken[] }>("get", "/api/auth-tokens"),
+    list: async (organizationId: string) =>
+      apiCall<{ tokens: AuthToken[] }>("get", "/api/auth-tokens", {
+        params: { organizationId },
+      }),
 
     create: async (params: CreateAuthTokenParams) =>
       apiCall<{ token: AuthToken }>("post", "/api/auth-tokens", {
