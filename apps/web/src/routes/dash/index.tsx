@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { appClient } from "../../lib/app-client";
-import { authClient } from "../../lib/auth-client";
+import { useAppStore } from "../../lib/store";
 import {
   AreaChart,
   Area,
@@ -51,13 +51,8 @@ function formatBytes(bytes: number): string {
 
 function OverviewView() {
   const [timeRange, setTimeRange] = useState("24h");
-  const { data: activeOrganization, isLoading: orgLoading } = useQuery({
-    queryKey: ["activeOrganization"],
-    queryFn: async () => {
-      const session = await authClient.getSession();
-      return session.data?.session.activeOrganizationId || null;
-    },
-  });
+  const { selectedOrganizationId } = useAppStore();
+  const activeOrganization = selectedOrganizationId;
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["stats", "overview", activeOrganization],
@@ -83,7 +78,7 @@ function OverviewView() {
 
   const activeTunnels = tunnelsData && "tunnels" in tunnelsData ? tunnelsData.tunnels : [];
 
-  if (orgLoading || statsLoading) {
+  if (statsLoading) {
     return (
       <div className="space-y-6 animate-pulse max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
