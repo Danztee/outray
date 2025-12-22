@@ -245,9 +245,9 @@ function DomainsView() {
                   Added on {new Date(domain.createdAt).toLocaleDateString()}
                 </p>
                 {domain.status !== "active" && (
-                  <div className="mt-4 bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                  <div className="mt-4 bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
                     <div className="p-4 border-b border-white/5 flex items-start gap-3">
-                      <div className="p-2 bg-blue-500/10 rounded-lg shrink-0">
+                      <div className="p-2 bg-blue-500/10 rounded-xl shrink-0">
                         <Info className="w-4 h-4 text-blue-400" />
                       </div>
                       <div>
@@ -264,7 +264,7 @@ function DomainsView() {
 
                     <div className="p-4 space-y-3">
                       {/* CNAME Record */}
-                      <div className="bg-white/5 rounded-lg border border-white/5 overflow-hidden">
+                      <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
                         <div className="grid grid-cols-[60px_1fr_1fr_32px] gap-4 p-2.5 border-b border-white/5 text-[10px] font-medium text-white/40 uppercase tracking-wider">
                           <div>Type</div>
                           <div>Name</div>
@@ -273,7 +273,7 @@ function DomainsView() {
                         </div>
                         <div className="grid grid-cols-[60px_1fr_1fr_32px] gap-4 p-3 items-center">
                           <div>
-                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-medium ring-1 ring-inset ring-blue-500/20">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-medium ring-1 ring-inset ring-blue-500/20">
                               CNAME
                             </span>
                           </div>
@@ -294,7 +294,7 @@ function DomainsView() {
                               onClick={() =>
                                 navigator.clipboard.writeText("edge.outray.app")
                               }
-                              className="p-1.5 hover:bg-white/10 rounded-md text-white/40 hover:text-white transition-colors"
+                              className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
                               title="Copy value"
                             >
                               <Copy className="w-3.5 h-3.5" />
@@ -304,7 +304,7 @@ function DomainsView() {
                       </div>
 
                       {/* TXT Record */}
-                      <div className="bg-white/5 rounded-lg border border-white/5 overflow-hidden">
+                      <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
                         <div className="grid grid-cols-[60px_1fr_1fr_32px] gap-4 p-2.5 border-b border-white/5 text-[10px] font-medium text-white/40 uppercase tracking-wider">
                           <div>Type</div>
                           <div>Name</div>
@@ -313,7 +313,7 @@ function DomainsView() {
                         </div>
                         <div className="grid grid-cols-[60px_1fr_1fr_32px] gap-4 p-3 items-center">
                           <div>
-                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 text-xs font-medium ring-1 ring-inset ring-purple-500/20">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-medium ring-1 ring-inset ring-purple-500/20">
                               TXT
                             </span>
                           </div>
@@ -340,7 +340,7 @@ function DomainsView() {
                               onClick={() =>
                                 navigator.clipboard.writeText(domain.id)
                               }
-                              className="p-1.5 hover:bg-white/10 rounded-md text-white/40 hover:text-white transition-colors"
+                              className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
                               title="Copy value"
                             >
                               <Copy className="w-3.5 h-3.5" />
@@ -354,7 +354,7 @@ function DomainsView() {
                       <button
                         onClick={() => verifyMutation.mutate(domain.id)}
                         disabled={verifyMutation.isPending}
-                        className="w-full py-2.5 bg-white text-black rounded-lg hover:bg-white/90 transition-colors font-medium disabled:opacity-50 text-sm"
+                        className="w-full py-2.5 bg-white text-black rounded-xl hover:bg-white/90 transition-colors font-medium disabled:opacity-50 text-sm"
                       >
                         {verifyMutation.isPending
                           ? "Verifying Configuration..."
