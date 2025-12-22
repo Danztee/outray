@@ -13,6 +13,7 @@ import {
   LogOut,
   Check,
   Plus,
+  Link2,
 } from "lucide-react";
 import { useAppStore } from "../lib/store";
 import { authClient } from "../lib/auth-client";
@@ -205,6 +206,12 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           to="/dash/subdomains"
           icon={<Globe size={20} />}
           label="Subdomains"
+          isCollapsed={isCollapsed}
+        />
+        <NavItem
+          to="/dash/domains"
+          icon={<Link2 size={20} />}
+          label="Domains"
           isCollapsed={isCollapsed}
         />
 
