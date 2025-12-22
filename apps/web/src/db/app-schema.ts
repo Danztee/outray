@@ -66,6 +66,30 @@ export const authTokens = pgTable(
   ],
 );
 
+export const domains = pgTable(
+  "domains",
+  {
+    id: text("id").primaryKey(),
+    domain: text("domain").notNull().unique(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"), // pending, active, failed
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("domains_domain_idx").on(table.domain),
+    index("domains_organizationId_idx").on(table.organizationId),
+    index("domains_userId_idx").on(table.userId),
+  ],
+);
+
 export const tunnelsRelations = relations(tunnels, ({ one }) => ({
   user: one(users, {
     fields: [tunnels.userId],
@@ -99,14 +123,27 @@ export const authTokensRelations = relations(authTokens, ({ one }) => ({
   }),
 }));
 
+export const domainsRelations = relations(domains, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [domains.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [domains.userId],
+    references: [users.id],
+  }),
+}));
+
 export const usersAppRelations = relations(users, ({ many }) => ({
   tunnels: many(tunnels),
   authTokens: many(authTokens),
   subdomains: many(subdomains),
+  domains: many(domains),
 }));
 
 export const organizationsAppRelations = relations(organizations, ({ many }) => ({
   tunnels: many(tunnels),
   authTokens: many(authTokens),
   subdomains: many(subdomains),
+  domains: many(domains),
 }));
