@@ -60,6 +60,7 @@ app.get("/internal/domain-check", async (req, res) => {
       "www.outray.app",
       "edge.outray.app",
       "api.outray.app",
+      "api.outray.dev",
     ];
 
     if (ALLOWED_INFRA_DOMAINS.includes(domain)) {
