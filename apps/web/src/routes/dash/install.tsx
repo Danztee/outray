@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Copy, Check, Download, Key, Play } from "lucide-react";
 import { useAppStore } from "../../lib/store";
 import { appClient } from "../../lib/app-client";
@@ -9,21 +10,21 @@ export const Route = createFileRoute("/dash/install")({
 });
 
 function Install() {
-  const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { selectedOrganizationId } = useAppStore();
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      if (selectedOrganizationId) {
-        const res = await appClient.authTokens.list(selectedOrganizationId);
-        if ("tokens" in res && res.tokens.length > 0) {
-          setToken(res.tokens[0].token);
-        }
+  const { data: token } = useQuery({
+    queryKey: ["authTokens", selectedOrganizationId],
+    queryFn: async () => {
+      if (!selectedOrganizationId) return null;
+      const res = await appClient.authTokens.list(selectedOrganizationId);
+      if ("tokens" in res && res.tokens.length > 0) {
+        return res.tokens[0].token;
       }
-    };
-    fetchToken();
-  }, [selectedOrganizationId]);
+      return null;
+    },
+    enabled: !!selectedOrganizationId,
+  });
 
   return (
     <div className="mx-auto max-w-5xl p-8">
@@ -54,9 +55,7 @@ function Install() {
               create and manage tunnels from your terminal.
             </p>
             <div className="bg-black/50 rounded-xl border border-white/10 p-4 flex items-center justify-between group/code">
-              <code className="font-mono text-accent">
-                npm install -g outray
-              </code>
+              <code className="font-mono text-accent">npm i -g outray</code>
               <button
                 onClick={() =>
                   navigator.clipboard.writeText("npm install -g outray")
@@ -137,11 +136,9 @@ function Install() {
               port 3000:
             </p>
             <div className="bg-black/50 rounded-xl border border-white/10 p-4 flex items-center justify-between group/code">
-              <code className="font-mono text-accent">outray http 3000</code>
+              <code className="font-mono text-accent">outray 3000</code>
               <button
-                onClick={() =>
-                  navigator.clipboard.writeText("outray http 3000")
-                }
+                onClick={() => navigator.clipboard.writeText("outray 3000")}
                 className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors opacity-0 group-hover/code:opacity-100"
               >
                 <Copy size={18} />
