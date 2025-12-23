@@ -11,6 +11,7 @@ export class OutRayClient {
   private serverUrl: string;
   private apiKey?: string;
   private subdomain?: string;
+  private customDomain?: string;
   private requestedSubdomain?: string;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
@@ -24,11 +25,13 @@ export class OutRayClient {
     serverUrl: string = "wss://api.outray.dev/",
     apiKey?: string,
     subdomain?: string,
+    customDomain?: string,
   ) {
     this.localPort = localPort;
     this.serverUrl = serverUrl;
     this.apiKey = apiKey;
     this.subdomain = subdomain;
+    this.customDomain = customDomain;
     this.requestedSubdomain = subdomain;
   }
 
@@ -76,6 +79,7 @@ export class OutRayClient {
       type: "open_tunnel",
       apiKey: this.apiKey,
       subdomain: this.subdomain,
+      customDomain: this.customDomain,
       forceTakeover: this.forceTakeover,
     });
     this.ws?.send(handshake);
