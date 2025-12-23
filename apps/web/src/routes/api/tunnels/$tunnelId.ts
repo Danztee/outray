@@ -40,20 +40,21 @@ export const Route = createFileRoute("/api/tunnels/$tunnelId")({
           return json({ error: "Unauthorized" }, { status: 403 });
         }
 
-        let subdomain = "";
+        let onlineTunnelId = "";
         try {
           const urlObj = new URL(
             tunnel.url.startsWith("http")
               ? tunnel.url
               : `https://${tunnel.url}`,
           );
-          subdomain = urlObj.hostname.split(".")[0];
+          // Use full hostname as tunnel ID (e.g., "passive-robin.outray.app" or "test.outray.co")
+          onlineTunnelId = urlObj.hostname;
         } catch (e) {
           console.error("Failed to parse tunnel URL:", tunnel.url);
         }
 
-        const isOnline = subdomain
-          ? await redis.exists(`tunnel:online:${subdomain}`)
+        const isOnline = onlineTunnelId
+          ? await redis.exists(`tunnel:online:${onlineTunnelId}`)
           : false;
 
         return json({
