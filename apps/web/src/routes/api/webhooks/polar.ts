@@ -54,9 +54,7 @@ export const Route = createFileRoute("/api/webhooks/polar")({
   },
 });
 
-// Handler for subscription.created
 async function handleSubscriptionCreated(subscription: any) {
-  // Map Polar plan IDs to our plan names
   const planName = mapPolarProductToPlan(subscription.productId);
 
   try {
@@ -88,7 +86,6 @@ async function handleSubscriptionCreated(subscription: any) {
   }
 }
 
-// Handler for subscription.active
 async function handleSubscriptionActive(subscription: any) {
   try {
     await db
@@ -109,9 +106,7 @@ async function handleSubscriptionActive(subscription: any) {
   }
 }
 
-// Handler for subscription.updated
 async function handleSubscriptionUpdated(subscription: any) {
-  // Map Polar plan IDs to our plan names
   const planName = mapPolarProductToPlan(subscription.productId);
 
   try {
@@ -135,7 +130,6 @@ async function handleSubscriptionUpdated(subscription: any) {
   }
 }
 
-// Handler for subscription.canceled
 async function handleSubscriptionCanceled(subscription: any) {
   try {
     await db
@@ -155,7 +149,6 @@ async function handleSubscriptionCanceled(subscription: any) {
   }
 }
 
-// Handler for subscription.uncanceled
 async function handleSubscriptionUncanceled(subscription: any) {
   try {
     await db
@@ -175,7 +168,6 @@ async function handleSubscriptionUncanceled(subscription: any) {
   }
 }
 
-// Handler for subscription.revoked
 async function handleSubscriptionRevoked(subscription: any) {
   try {
     await db
@@ -196,8 +188,8 @@ async function handleSubscriptionRevoked(subscription: any) {
 
 function mapPolarProductToPlan(productId: string): string {
   const productPlanMap: Record<string, string> = {
-    [process.env.POLAR_PRODUCT_ID_ONE!]: "ray",
-    [process.env.POLAR_PRODUCT_ID_TWO!]: "beam",
+    [process.env.POLAR_PRODUCT_RAY!]: "ray",
+    [process.env.POLAR_PRODUCT_BEAM!]: "beam",
   };
 
   return productPlanMap[productId] || "free";
