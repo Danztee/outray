@@ -24,6 +24,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useState } from "react";
+import { BandwidthUsage } from "../../components/BandwidthUsage";
 
 export const Route = createFileRoute("/dash/")({
   component: OverviewView,
@@ -62,7 +63,10 @@ function OverviewView() {
     queryKey: ["stats", "overview", activeOrganization, timeRange],
     queryFn: async () => {
       if (!activeOrganization) return null;
-      const result = await appClient.stats.overview(activeOrganization, timeRange);
+      const result = await appClient.stats.overview(
+        activeOrganization,
+        timeRange,
+      );
       if ("error" in result) {
         throw new Error(result.error);
       }
@@ -81,7 +85,8 @@ function OverviewView() {
     enabled: !!activeOrganization,
   });
 
-  const activeTunnels = tunnelsData && "tunnels" in tunnelsData ? tunnelsData.tunnels : [];
+  const activeTunnels =
+    tunnelsData && "tunnels" in tunnelsData ? tunnelsData.tunnels : [];
 
   if (statsLoading) {
     return (
@@ -126,11 +131,14 @@ function OverviewView() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">Welcome back, here's what's happening.</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Overview
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Welcome back, here's what's happening.
+          </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-black rounded-xl transition-colors font-medium shadow-lg shadow-white/5">
           <Plus size={18} />
@@ -138,14 +146,15 @@ function OverviewView() {
         </button>
       </div>
 
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <OverviewCard
           title="Total Requests"
           value={formatNumber(stats?.totalRequests || 0)}
           change={stats?.requestsChange}
           icon={<Activity size={20} />}
-          trend={stats?.requestsChange && stats.requestsChange < 0 ? "down" : "up"}
+          trend={
+            stats?.requestsChange && stats.requestsChange < 0 ? "down" : "up"
+          }
           showDash={stats?.totalRequests === 0}
         />
         <OverviewCard
@@ -159,13 +168,16 @@ function OverviewView() {
           value={formatBytes(stats?.totalDataTransfer || 0)}
           change={stats?.dataTransferChange}
           icon={<Globe size={20} />}
-          trend={stats?.dataTransferChange && stats.dataTransferChange < 0 ? "down" : "up"}
+          trend={
+            stats?.dataTransferChange && stats.dataTransferChange < 0
+              ? "down"
+              : "up"
+          }
           showDash={stats?.totalDataTransfer === 0}
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
         <div className="lg:col-span-2 bg-white/2 border border-white/5 rounded-2xl p-6 relative">
           {isPlaceholderData && (
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-10 rounded-2xl flex items-center justify-center transition-all duration-200">
@@ -196,7 +208,7 @@ function OverviewView() {
               ))}
             </div>
           </div>
-          
+
           {!stats?.chartData || stats.chartData.length === 0 ? (
             <div className="h-75 flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-xl border border-white/5 border-dashed">
               <Activity size={32} className="mb-2 opacity-50" />
@@ -234,12 +246,22 @@ function OverviewView() {
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                 >
                   <defs>
-                    <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient
+                      id="colorRequests"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
                       <stop offset="5%" stopColor="#FFA62B" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#FFA62B" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.05)"
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey="time"
                     stroke="#666"
@@ -279,63 +301,72 @@ function OverviewView() {
           )}
         </div>
 
+        <div className="flex flex-col gap-6">
+          <BandwidthUsage />
+          <div className="bg-white/2 border border-white/5 rounded-2xl p-6 flex flex-col flex-1">
+            <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+              <Server size={18} className="text-blue-400" />
+              Active Tunnels
+            </h3>
 
-        <div className="bg-white/2 border border-white/5 rounded-2xl p-6 flex flex-col">
-          <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
-            <Server size={18} className="text-blue-400" />
-            Active Tunnels
-          </h3>
-          
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2 -mr-2 custom-scrollbar">
-            {activeTunnels.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-8">
-                <Network size={32} className="mb-3 opacity-50" />
-                <p className="text-sm">No active tunnels</p>
-                <Link 
-                  to="/dash/tunnels" 
-                  className="mt-2 text-xs text-accent hover:underline"
-                >
-                  Start your first tunnel
-                </Link>
-              </div>
-            ) : (
-              activeTunnels.slice(0, 5).map((tunnel) => (
-                <Link
-                  key={tunnel.id}
-                  to="/dash/tunnels/$tunnelId"
-                  params={{ tunnelId: tunnel.id }}
-                  className="block p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition-all group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${tunnel.isOnline ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
-                      <span className="text-sm font-medium text-white truncate max-w-30">
-                        {tunnel.name || tunnel.id}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2 -mr-2 custom-scrollbar">
+              {activeTunnels.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 py-8">
+                  <Network size={32} className="mb-3 opacity-50" />
+                  <p className="text-sm">No active tunnels</p>
+                  <Link
+                    to="/dash/tunnels"
+                    className="mt-2 text-xs text-accent hover:underline"
+                  >
+                    Start your first tunnel
+                  </Link>
+                </div>
+              ) : (
+                activeTunnels.slice(0, 5).map((tunnel) => (
+                  <Link
+                    key={tunnel.id}
+                    to="/dash/tunnels/$tunnelId"
+                    params={{ tunnelId: tunnel.id }}
+                    className="block p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${tunnel.isOnline ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                        />
+                        <span className="text-sm font-medium text-white truncate max-w-30">
+                          {tunnel.name || tunnel.id}
+                        </span>
+                      </div>
+                      <ChevronRight
+                        size={14}
+                        className="text-gray-500 group-hover:text-white transition-colors"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span className="font-mono truncate max-w-35">
+                        {tunnel.url}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={10} />
+                        {new Date(tunnel.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <ChevronRight size={14} className="text-gray-500 group-hover:text-white transition-colors" />
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="font-mono truncate max-w-35">{tunnel.url}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={10} />
-                      {new Date(tunnel.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                ))
+              )}
+            </div>
+
+            {activeTunnels.length > 0 && (
+              <Link
+                to="/dash/tunnels"
+                className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-white transition-colors py-2 border-t border-white/5"
+              >
+                View all tunnels
+                <ArrowUpRight size={14} />
+              </Link>
             )}
           </div>
-          
-          {activeTunnels.length > 0 && (
-            <Link 
-              to="/dash/tunnels"
-              className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-400 hover:text-white transition-colors py-2 border-t border-white/5"
-            >
-              View all tunnels
-              <ArrowUpRight size={14} />
-            </Link>
-          )}
         </div>
       </div>
     </div>
@@ -360,11 +391,12 @@ function OverviewCard({
   showDash?: boolean;
 }) {
   const isPositive = trend === "up";
-  const changeColor = trend === "neutral" 
-    ? "text-gray-400 bg-white/5 border-white/10"
-    : isPositive
-      ? "text-green-400 bg-green-500/10 border-green-500/20"
-      : "text-red-400 bg-red-500/10 border-red-500/20";
+  const changeColor =
+    trend === "neutral"
+      ? "text-gray-400 bg-white/5 border-white/10"
+      : isPositive
+        ? "text-green-400 bg-green-500/10 border-green-500/20"
+        : "text-red-400 bg-red-500/10 border-red-500/20";
 
   return (
     <div className="group bg-white/2 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all relative overflow-hidden">
@@ -373,15 +405,27 @@ function OverviewCard({
           {icon}
         </div>
         {(change !== undefined || trend !== "neutral") && (
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium ${changeColor}`}>
-            {trend === "up" ? <ArrowUpRight size={12} /> : trend === "down" ? <ArrowDownRight size={12} /> : null}
-            {showDash ? "-" : (change ? `${change > 0 ? "+" : ""}${change}%` : "—")}
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium ${changeColor}`}
+          >
+            {trend === "up" ? (
+              <ArrowUpRight size={12} />
+            ) : trend === "down" ? (
+              <ArrowDownRight size={12} />
+            ) : null}
+            {showDash
+              ? "-"
+              : change
+                ? `${change > 0 ? "+" : ""}${change}%`
+                : "—"}
           </div>
         )}
       </div>
-      
+
       <div className="relative z-10">
-        <div className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</div>
+        <div className="text-3xl font-bold text-white mb-1 tracking-tight">
+          {value}
+        </div>
         <div className="flex items-center gap-2">
           <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
             {title}
