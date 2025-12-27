@@ -80,7 +80,7 @@ export class WSHandler {
     userId: string,
     organizationId: string,
     url: string,
-  ): Promise<string | null> {
+  ): Promise<{ success: boolean; tunnelId?: string; error?: string }> {
     try {
       const response = await fetch(`${this.webApiUrl}/tunnel/register`, {
         method: "POST",
@@ -91,14 +91,26 @@ export class WSHandler {
           url,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = (await response.json()) as { error?: string };
+        return {
+          success: false,
+          error: errorData.error || `HTTP ${response.status}`,
+        };
+      }
+
       const data = (await response.json()) as {
         success: boolean;
         tunnelId?: string;
       };
-      return data.tunnelId || null;
+      return {
+        success: true,
+        tunnelId: data.tunnelId,
+      };
     } catch (error) {
       console.error("Failed to register tunnel in database:", error);
-      return null;
+      return { success: false, error: "Failed to connect to API" };
     }
   }
 
@@ -206,15 +218,26 @@ export class WSHandler {
               tunnelId = message.customDomain;
               const tunnelUrl = `https://${message.customDomain}`;
 
-              // Register tunnel in database
+              // Register tunnel in database and check limits
               let dbTunnelId: string | undefined;
               if (userId && organizationId) {
-                const id = await this.registerTunnelInDatabase(
+                const result = await this.registerTunnelInDatabase(
                   userId,
                   organizationId,
                   tunnelUrl,
                 );
-                if (id) dbTunnelId = id;
+                if (!result.success) {
+                  ws.send(
+                    Protocol.encode({
+                      type: "error",
+                      code: "REGISTRATION_FAILED",
+                      message: result.error || "Failed to register tunnel",
+                    }),
+                  );
+                  ws.close();
+                  return;
+                }
+                dbTunnelId = result.tunnelId;
               }
 
               const registered = await this.router.registerTunnel(
@@ -282,8 +305,10 @@ export class WSHandler {
                 return;
               } else {
                 console.log(`Subdomain check passed: ${check.type}`);
+                // Use full hostname for reservation to match later usage
+                const fullHostname = `${requestedSubdomain}.${config.baseDomain}`;
                 reservationAcquired = await this.router.reserveTunnel(
-                  requestedSubdomain,
+                  fullHostname,
                   {
                     organizationId,
                     userId,
@@ -316,8 +341,9 @@ export class WSHandler {
                 const candidate = generateSubdomain();
                 const check = await this.checkSubdomain(candidate);
                 if (check.allowed) {
+                  const fullHostname = `${candidate}.${config.baseDomain}`;
                   reservationAcquired = await this.router.reserveTunnel(
-                    candidate,
+                    fullHostname,
                     {
                       organizationId,
                       userId,
@@ -335,8 +361,9 @@ export class WSHandler {
 
               if (!reservationAcquired) {
                 const fallback = generateId("tunnel");
+                const fullHostname = `${fallback}.${config.baseDomain}`;
                 reservationAcquired = await this.router.reserveTunnel(
-                  fallback,
+                  fullHostname,
                   {
                     organizationId,
                     userId,
@@ -373,14 +400,36 @@ export class WSHandler {
             const fullHostname = `${tunnelId}.${config.baseDomain}`;
             const tunnelUrl = `${protocol}://${fullHostname}${portSuffix}`;
 
+            // Register tunnel in database and check limits
             let dbTunnelId: string | undefined;
             if (userId && organizationId) {
-              const id = await this.registerTunnelInDatabase(
+              const result = await this.registerTunnelInDatabase(
                 userId,
                 organizationId,
                 tunnelUrl,
               );
-              if (id) dbTunnelId = id;
+              if (!result.success) {
+                // Remove the reserved tunnel from Redis since we're rejecting it
+                const redis = this.router.getRedis();
+                if (redis && organizationId) {
+                  await redis.zrem(
+                    `org:${organizationId}:active_tunnels`,
+                    fullHostname,
+                  );
+                  await redis.del(`tunnel:online:${fullHostname}`);
+                }
+
+                ws.send(
+                  Protocol.encode({
+                    type: "error",
+                    code: "LIMIT_EXCEEDED",
+                    message: result.error || "Failed to register tunnel",
+                  }),
+                );
+                ws.close();
+                return;
+              }
+              dbTunnelId = result.tunnelId;
             }
 
             // Use full hostname as tunnel ID for consistency
