@@ -64,8 +64,6 @@ function TunnelDetailView() {
   const stats = statsData && "stats" in statsData ? statsData.stats : null;
   const chartData =
     statsData && "chartData" in statsData ? statsData.chartData : [];
-  const requests =
-    statsData && "requests" in statsData ? statsData.requests : [];
 
   const setActiveTab = (tab: string) => {
     navigate({
@@ -127,7 +125,7 @@ function TunnelDetailView() {
         />
       )}
 
-      {activeTab === "requests" && <TunnelRequests requests={requests} />}
+      {activeTab === "requests" && <TunnelRequests tunnelId={tunnelId} />}
     </div>
   );
 }

@@ -21,8 +21,10 @@ export const Route = createFileRoute("/api/requests")({
 
         const url = new URL(request.url);
         const organizationId = url.searchParams.get("organizationId");
+        const tunnelId = url.searchParams.get("tunnelId");
         const timeRange = url.searchParams.get("range") || "1h";
         const limit = parseInt(url.searchParams.get("limit") || "100");
+        const search = url.searchParams.get("search");
 
         if (!organizationId) {
           return json({ error: "Organization ID required" }, { status: 400 });
@@ -49,8 +51,7 @@ export const Route = createFileRoute("/api/requests")({
         }
 
         try {
-          const requestsResult = await clickhouse.query({
-            query: `
+          let query = `
               SELECT 
                 timestamp,
                 tunnel_id,
@@ -67,10 +68,28 @@ export const Route = createFileRoute("/api/requests")({
               FROM tunnel_events
               WHERE organization_id = {organizationId:String}
                 AND timestamp >= now64() - INTERVAL ${interval}
-              ORDER BY timestamp DESC
-              LIMIT {limit:UInt32}
-            `,
-            query_params: { organizationId, limit },
+          `;
+
+          const queryParams: Record<string, any> = {
+            organizationId,
+            limit,
+          };
+
+          if (tunnelId) {
+            query += ` AND tunnel_id = {tunnelId:String}`;
+            queryParams.tunnelId = tunnelId;
+          }
+
+          if (search) {
+            query += ` AND (path ILIKE {searchPattern:String} OR method ILIKE {searchPattern:String} OR host ILIKE {searchPattern:String})`;
+            queryParams.searchPattern = `%${search}%`;
+          }
+
+          query += ` ORDER BY timestamp DESC LIMIT {limit:UInt32}`;
+
+          const requestsResult = await clickhouse.query({
+            query,
+            query_params: queryParams,
             format: "JSONEachRow",
           });
 

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Search, Filter, Download, Radio } from "lucide-react";
+import { Search, Radio } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "../../lib/store";
 
@@ -49,7 +49,7 @@ function RequestsView() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/requests?organizationId=${activeOrgId}&range=${range}&limit=100`,
+        `/api/requests?organizationId=${activeOrgId}&range=${range}&limit=100&search=${encodeURIComponent(searchTerm)}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -67,10 +67,13 @@ function RequestsView() {
       // Clear historical data when switching to live
       setRequests([]);
     } else {
-      // Fetch historical data
-      void fetchHistoricalRequests(timeRange);
+      // Fetch historical data with debounce
+      const timer = setTimeout(() => {
+        void fetchHistoricalRequests(timeRange);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, [timeRange, activeOrgId]);
+  }, [timeRange, activeOrgId, searchTerm]);
 
   // WebSocket connection for live mode
   useEffect(() => {
@@ -105,12 +108,15 @@ function RequestsView() {
     };
   }, [activeOrgId, timeRange]);
 
-  const filteredRequests = requests.filter(
-    (req) =>
-      req.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.method.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.host.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredRequests =
+    timeRange === "live"
+      ? requests.filter(
+          (req) =>
+            req.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            req.method.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            req.host.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
+      : requests;
 
   if (!activeOrgId) {
     return (
@@ -192,14 +198,14 @@ function RequestsView() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">
+          {/* <button className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">
             <Filter size={16} />
             Filters
           </button>
           <button className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/10 transition-all">
             <Download size={16} />
             Export
-          </button>
+          </button> */}
         </div>
       </div>
 
