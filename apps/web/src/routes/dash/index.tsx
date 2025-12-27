@@ -14,6 +14,8 @@ import {
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { appClient } from "../../lib/app-client";
 import { useAppStore } from "../../lib/store";
+import { getPlanLimits } from "../../lib/subscription-plans";
+import axios from "axios";
 import {
   AreaChart,
   Area,
@@ -57,6 +59,18 @@ function OverviewView() {
   const { selectedOrganizationId } = useAppStore();
   const activeOrganization = selectedOrganizationId;
 
+  const { data: subscriptionData } = useQuery({
+    queryKey: ["subscription", activeOrganization],
+    queryFn: async () => {
+      if (!activeOrganization) return null;
+      const response = await axios.get(
+        `/api/subscriptions/${activeOrganization}`,
+      );
+      return response.data;
+    },
+    enabled: !!activeOrganization,
+  });
+
   const {
     data: stats,
     isLoading: statsLoading,
@@ -89,6 +103,22 @@ function OverviewView() {
 
   const activeTunnels =
     tunnelsData && "tunnels" in tunnelsData ? tunnelsData.tunnels : [];
+
+  const subscription = subscriptionData?.subscription;
+  const currentPlan = subscription?.plan || "free";
+  const planLimits = getPlanLimits(currentPlan as any);
+  const tunnelLimit = planLimits.maxTunnels;
+  const isAtLimit = activeTunnels.length >= tunnelLimit;
+
+  const handleNewTunnelClick = () => {
+    if (isAtLimit) {
+      alert(
+        `You've reached your tunnel limit (${tunnelLimit} tunnels). Upgrade your plan to create more tunnels.`,
+      );
+      return;
+    }
+    setIsNewTunnelModalOpen(true);
+  };
 
   if (statsLoading) {
     return (
@@ -143,8 +173,12 @@ function OverviewView() {
           </p>
         </div>
         <button
-          onClick={() => setIsNewTunnelModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-black rounded-xl transition-colors font-medium shadow-lg shadow-white/5"
+          onClick={handleNewTunnelClick}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors font-medium shadow-lg shadow-white/5 ${
+            isAtLimit
+              ? "bg-white/10 text-gray-400 cursor-not-allowed"
+              : "bg-white hover:bg-gray-200 text-black"
+          }`}
         >
           <Plus size={18} />
           New Tunnel
