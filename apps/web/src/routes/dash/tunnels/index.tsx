@@ -10,9 +10,14 @@ import {
   List,
   Search,
   Check,
+  Plus,
+  AlertTriangle,
 } from "lucide-react";
 import { appClient } from "../../../lib/app-client";
 import { useAppStore } from "../../../lib/store";
+import { getPlanLimits } from "../../../lib/subscription-plans";
+import axios from "axios";
+import { NewTunnelModal } from "../../../components/new-tunnel-modal";
 
 export const Route = createFileRoute("/dash/tunnels/")({
   component: TunnelsView,
@@ -23,9 +28,20 @@ function TunnelsView() {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isNewTunnelModalOpen, setIsNewTunnelModalOpen] = useState(false);
 
   const { selectedOrganizationId } = useAppStore();
   const activeOrgId = selectedOrganizationId;
+
+  const { data: subscriptionData } = useQuery({
+    queryKey: ["subscription", activeOrgId],
+    queryFn: async () => {
+      if (!activeOrgId) return null;
+      const response = await axios.get(`/api/subscriptions/${activeOrgId}`);
+      return response.data;
+    },
+    enabled: !!activeOrgId,
+  });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["tunnels", activeOrgId],
@@ -95,25 +111,68 @@ function TunnelsView() {
   }
 
   const tunnels = data && "tunnels" in data ? data.tunnels : [];
+  const subscription = subscriptionData?.subscription;
+  const currentPlan = subscription?.plan || "free";
+  const planLimits = getPlanLimits(currentPlan as any);
+  const tunnelLimit = planLimits.maxTunnels;
+  const isAtLimit = tunnels.length >= tunnelLimit;
+
+  const handleNewTunnelClick = () => {
+    if (isAtLimit) {
+      alert(
+        `You've reached your tunnel limit (${tunnelLimit} tunnels). Upgrade your plan to create more tunnels.`,
+      );
+      return;
+    }
+    setIsNewTunnelModalOpen(true);
+  };
 
   const filteredTunnels = tunnels
     .filter(
       (t) =>
         t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.url.toLowerCase().includes(searchQuery.toLowerCase())
+        t.url.toLowerCase().includes(searchQuery.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "newest")
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       if (sortBy === "oldest")
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      if (sortBy === "name")
-        return (a.name || "").localeCompare(b.name || "");
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      if (sortBy === "name") return (a.name || "").localeCompare(b.name || "");
       return 0;
     });
 
   return (
     <div className="space-y-6">
+      {isAtLimit && (
+        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 flex items-center gap-3">
+          <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-orange-200">
+              Tunnel Limit Reached
+            </h3>
+            <p className="text-xs text-orange-200/60 mt-0.5">
+              You have reached the limit of {tunnelLimit} tunnels on the{" "}
+              <span className="capitalize">{currentPlan}</span> plan. Upgrade to
+              create more.
+            </p>
+          </div>
+          <Link
+            to="/dash/billing"
+            search={{ success: false }}
+            className="ml-auto px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-200 text-xs font-medium rounded-lg transition-colors"
+          >
+            Upgrade Plan
+          </Link>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md group">
           <Search
@@ -139,12 +198,12 @@ function TunnelsView() {
                 <span className="capitalize">{sortBy}</span>
               </div>
             </button>
-            
+
             {isSortOpen && (
               <>
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setIsSortOpen(false)} 
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsSortOpen(false)}
                 />
                 <div className="absolute right-0 top-full mt-2 w-40 bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden shadow-xl z-20 py-1">
                   {(["newest", "oldest", "name"] as const).map((option) => (
@@ -157,7 +216,9 @@ function TunnelsView() {
                       className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center justify-between"
                     >
                       <span className="capitalize">{option}</span>
-                      {sortBy === option && <Check size={14} className="text-accent" />}
+                      {sortBy === option && (
+                        <Check size={14} className="text-accent" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -166,7 +227,7 @@ function TunnelsView() {
           </div>
 
           <div className="h-9 w-px bg-white/10 mx-1" />
-          
+
           <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
             <button
               onClick={() => setViewMode("list")}
@@ -189,13 +250,33 @@ function TunnelsView() {
               <LayoutGrid size={16} />
             </button>
           </div>
+
+          <button
+            onClick={handleNewTunnelClick}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-medium shadow-lg shadow-white/5 ${
+              isAtLimit
+                ? "bg-white/10 text-gray-400 cursor-not-allowed"
+                : "bg-white hover:bg-gray-200 text-black"
+            }`}
+          >
+            <Plus size={18} />
+            New Tunnel
+          </button>
         </div>
       </div>
 
-      <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
+      <div
+        className={
+          viewMode === "grid"
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            : "space-y-4"
+        }
+      >
         {filteredTunnels.length === 0 ? (
           <div className="col-span-full text-center py-12 text-gray-500">
-            {searchQuery ? "No tunnels match your search" : "No tunnels found. Start one using the CLI!"}
+            {searchQuery
+              ? "No tunnels match your search"
+              : "No tunnels found. Start one using the CLI!"}
           </div>
         ) : (
           filteredTunnels.map((tunnel) => (
@@ -206,9 +287,20 @@ function TunnelsView() {
               className={`block group bg-white/2 border border-white/5 rounded-2xl hover:border-white/10 transition-all ${
                 viewMode === "grid" ? "p-6 h-full flex flex-col" : "p-6"
               }`}
+              search={{
+                tab: "overview",
+              }}
             >
-              <div className={viewMode === "grid" ? "flex flex-col h-full" : "flex items-center justify-between"}>
-                <div className={`flex items-center gap-4 ${viewMode === "grid" ? "mb-6" : ""}`}>
+              <div
+                className={
+                  viewMode === "grid"
+                    ? "flex flex-col h-full"
+                    : "flex items-center justify-between"
+                }
+              >
+                <div
+                  className={`flex items-center gap-4 ${viewMode === "grid" ? "mb-6" : ""}`}
+                >
                   <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
                     <Globe size={20} />
                   </div>
@@ -238,13 +330,23 @@ function TunnelsView() {
                   </div>
                 </div>
 
-                <div className={viewMode === "grid" ? "mt-auto pt-6 border-t border-white/5 flex items-center justify-between" : "flex items-center gap-8"}>
-                  <div className={`flex items-center ${viewMode === "grid" ? "gap-4 w-full justify-between" : "gap-6"}`}>
+                <div
+                  className={
+                    viewMode === "grid"
+                      ? "mt-auto pt-6 border-t border-white/5 flex items-center justify-between"
+                      : "flex items-center gap-8"
+                  }
+                >
+                  <div
+                    className={`flex items-center ${viewMode === "grid" ? "gap-4 w-full justify-between" : "gap-6"}`}
+                  >
                     <div className={viewMode === "grid" ? "" : "text-right"}>
                       <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-1">
                         Status
                       </div>
-                      <div className={`flex items-center gap-2 ${viewMode === "grid" ? "" : "justify-end"}`}>
+                      <div
+                        className={`flex items-center gap-2 ${viewMode === "grid" ? "" : "justify-end"}`}
+                      >
                         <div
                           className={`w-2 h-2 rounded-full ${
                             tunnel.isOnline
@@ -257,10 +359,14 @@ function TunnelsView() {
                         </span>
                       </div>
                     </div>
-                    
+
                     {!viewMode && <div className="h-8 w-px bg-white/5" />}
-                    
-                    <div className={viewMode === "grid" ? "text-right" : "text-right"}>
+
+                    <div
+                      className={
+                        viewMode === "grid" ? "text-right" : "text-right"
+                      }
+                    >
                       <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-1">
                         Created
                       </div>
@@ -281,6 +387,11 @@ function TunnelsView() {
           ))
         )}
       </div>
+
+      <NewTunnelModal
+        isOpen={isNewTunnelModalOpen}
+        onClose={() => setIsNewTunnelModalOpen(false)}
+      />
     </div>
   );
 }
