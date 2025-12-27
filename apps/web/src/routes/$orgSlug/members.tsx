@@ -8,7 +8,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { authClient } from "../../lib/auth-client";
+import { authClient, usePermission } from "../../lib/auth-client";
 import { useState } from "react";
 import { useAppStore } from "../../lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,8 @@ import axios from "axios";
 import { AlertModal } from "../../components/alert-modal";
 import { LimitModal } from "../../components/limit-modal";
 import { ConfirmModal } from "../../components/confirm-modal";
+import { ChangeRoleModal } from "../../components/change-role-modal";
+import { useEffect, useRef } from "react";
 
 export const Route = createFileRoute("/$orgSlug/members")({
   component: MembersView,
@@ -32,6 +34,34 @@ function MembersView() {
     "member",
   );
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
+  const [changeRoleState, setChangeRoleState] = useState<{
+    isOpen: boolean;
+    memberId: string;
+    currentRole: "member" | "admin" | "owner";
+  }>({
+    isOpen: false,
+    memberId: "",
+    currentRole: "member",
+  });
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setActiveDropdownId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   const [alertState, setAlertState] = useState<{
     isOpen: boolean;
     title: string;
@@ -57,6 +87,22 @@ function MembersView() {
     onConfirm: () => {},
     isDestructive: false,
     confirmText: "Confirm",
+  });
+
+  const { data: canInvite } = usePermission({
+    member: ["create"],
+  });
+
+  const { data: canUpdate } = usePermission({
+    member: ["update"],
+  });
+
+  const { data: canDelete } = usePermission({
+    member: ["delete"],
+  });
+
+  const { data: canCancelInvitation } = usePermission({
+    invitation: ["cancel"],
   });
 
   const { data: subscriptionData, isLoading: isLoadingSubscription } = useQuery(
@@ -229,6 +275,35 @@ function MembersView() {
     },
   });
 
+  const updateRoleMutation = useMutation({
+    mutationFn: async (data: {
+      memberId: string;
+      role: "member" | "admin" | "owner";
+    }) => {
+      const res = await authClient.organization.updateMemberRole({
+        memberId: data.memberId,
+        role: data.role,
+        organizationId: selectedOrganizationId!,
+      });
+      if (res.error) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["members", selectedOrganizationId],
+      });
+      setChangeRoleState((prev) => ({ ...prev, isOpen: false }));
+    },
+    onError: (error: Error) => {
+      setAlertState({
+        isOpen: true,
+        title: "Update Failed",
+        message: error.message || "Failed to update member role",
+        type: "error",
+      });
+    },
+  });
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     inviteMutation.mutate({ email: inviteEmail, role: inviteRole });
@@ -326,17 +401,19 @@ function MembersView() {
             {memberLimit} members
           </p>
         </div>
-        <button
-          onClick={handleInviteClick}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-white/5 ${
-            isAtLimit
-              ? "bg-white/10 text-gray-400 cursor-not-allowed"
-              : "bg-white text-black hover:bg-gray-200"
-          }`}
-        >
-          <Plus size={18} />
-          Invite Member
-        </button>
+        {canInvite && (
+          <button
+            onClick={handleInviteClick}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-white/5 ${
+              isAtLimit
+                ? "bg-white/10 text-gray-400 cursor-not-allowed"
+                : "bg-white text-black hover:bg-gray-200"
+            }`}
+          >
+            <Plus size={18} />
+            Invite Member
+          </button>
+        )}
       </div>
 
       {isAtLimit && (
@@ -369,8 +446,8 @@ function MembersView() {
         </div>
       )}
 
-      <div className="bg-white/2 border border-white/5 rounded-2xl overflow-hidden mb-6">
-        <div className="p-6 border-b border-white/5">
+      <div className="bg-white/2 border border-white/5 rounded-2xl mb-6">
+        <div className="p-6 border-b border-white/5 rounded-t-2xl">
           <h3 className="text-lg font-medium text-white">Team Members</h3>
         </div>
 
@@ -398,14 +475,59 @@ function MembersView() {
                   <p className="text-sm text-gray-500">{member.user.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                {member.role !== "owner" && (
-                  <button
-                    onClick={() => removeMember(member.id)}
-                    className="p-2 text-gray-500 hover:text-red-500 transition-colors"
-                  >
-                    <MoreVertical size={18} />
-                  </button>
+              <div className="flex items-center gap-4 relative">
+                {member.role !== "owner" && (canUpdate || canDelete) && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdownId(
+                          activeDropdownId === member.id ? null : member.id,
+                        );
+                      }}
+                      className={`p-2 transition-colors rounded-lg ${activeDropdownId === member.id ? "bg-white/10 text-white" : "text-gray-500 hover:text-white hover:bg-white/5"}`}
+                    >
+                      <MoreVertical size={18} />
+                    </button>
+
+                    {activeDropdownId === member.id && (
+                      <div
+                        ref={dropdownRef}
+                        className="absolute right-0 top-full mt-2 w-48 bg-[#101010] border border-white/10 rounded-xl shadow-xl shadow-black/50 overflow-hidden z-50"
+                      >
+                        <div className="p-1">
+                          {canUpdate && (
+                            <button
+                              onClick={() => {
+                                setChangeRoleState({
+                                  isOpen: true,
+                                  memberId: member.id,
+                                  currentRole: member.role as any,
+                                });
+                                setActiveDropdownId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left"
+                            >
+                              <Shield size={14} />
+                              Change Role
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => {
+                                removeMember(member.id);
+                                setActiveDropdownId(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors text-left"
+                            >
+                              <X size={14} />
+                              Remove Member
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -433,12 +555,14 @@ function MembersView() {
                 <span className="px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-500 text-xs font-medium border border-yellow-500/20">
                   Pending
                 </span>
-                <button
-                  onClick={() => cancelInvitation(invitation.id)}
-                  className="p-2 text-gray-500 hover:text-red-500 transition-colors"
-                >
-                  <X size={18} />
-                </button>
+                {canCancelInvitation && (
+                  <button
+                    onClick={() => cancelInvitation(invitation.id)}
+                    className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -543,6 +667,21 @@ function MembersView() {
         limit={memberLimit}
         currentPlan={currentPlan}
         resourceName="Team Members"
+      />
+
+      <ChangeRoleModal
+        isOpen={changeRoleState.isOpen}
+        onClose={() =>
+          setChangeRoleState((prev) => ({ ...prev, isOpen: false }))
+        }
+        currentRole={changeRoleState.currentRole}
+        onConfirm={(role) =>
+          updateRoleMutation.mutate({
+            memberId: changeRoleState.memberId,
+            role,
+          })
+        }
+        isPending={updateRoleMutation.isPending}
       />
 
       <AlertModal

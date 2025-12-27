@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAppStore } from "../lib/store";
-import { authClient } from "../lib/auth-client";
+import { authClient, usePermission } from "../lib/auth-client";
 import { appClient } from "../lib/app-client";
 import { NavItem } from "./sidebar/nav-item";
 import { OrganizationDropdown } from "./sidebar/organization-dropdown";
@@ -80,6 +80,10 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     fetchStats();
   }, [selectedOrganizationId]);
 
+  const { data: canManageBilling } = usePermission({
+    billing: ["manage"],
+  });
+
   const NAV_ICON_SIZE = 14;
 
   const navSections = [
@@ -117,7 +121,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
     {
       title: "Organization",
       items: [
-        {
+        canManageBilling && {
           to: "/$orgSlug/billing",
           label: "Billing",
           icon: <CreditCard size={NAV_ICON_SIZE} />,
@@ -127,7 +131,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           label: "Members",
           icon: <Users size={NAV_ICON_SIZE} />,
         },
-      ],
+      ].filter((item) => item !== false && item !== undefined) as any[],
     },
     {
       title: "Configuration",

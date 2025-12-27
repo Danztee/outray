@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "../db";
 import { organization } from "better-auth/plugins";
 import { sendViaZepto } from "./send-email";
+import { ac, admin, member, owner } from "./permissions";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -21,6 +22,12 @@ export const auth = betterAuth({
   },
   plugins: [
     organization({
+      ac,
+      roles: {
+        owner,
+        admin,
+        member,
+      },
       sendInvitationEmail: async ({
         email,
         invitation,

@@ -9,7 +9,7 @@ import {
 } from "../../lib/subscription-plans";
 import { initiateCheckout, POLAR_PRODUCT_IDS } from "../../lib/polar";
 import axios from "axios";
-import { authClient } from "../../lib/auth-client";
+import { authClient, usePermission } from "../../lib/auth-client";
 import { useState } from "react";
 import { AlertModal } from "../../components/alert-modal";
 
@@ -38,6 +38,11 @@ function BillingView() {
     type: "info",
   });
 
+  const { data: canManageBilling, isPending: isCheckingPermission } =
+    usePermission({
+      billing: ["manage"],
+    });
+
   const { data, isLoading } = useQuery({
     queryKey: ["subscription", selectedOrganizationId],
     queryFn: async () => {
@@ -46,8 +51,31 @@ function BillingView() {
       );
       return response.data;
     },
-    enabled: !!selectedOrganizationId,
+    enabled: !!selectedOrganizationId && !!canManageBilling,
   });
+
+  if (isCheckingPermission) {
+    return (
+      <div className="flex items-center justify-center min-h-100">
+        <Loader2 className="w-8 h-8 animate-spin text-white/20" />
+      </div>
+    );
+  }
+
+  if (!canManageBilling) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-100 text-center">
+        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+          <CreditCard className="w-8 h-8 text-gray-500" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+        <p className="text-gray-400 max-w-md">
+          You don't have permission to manage billing for this organization.
+          Please contact an administrator if you need access.
+        </p>
+      </div>
+    );
+  }
 
   const { data: session } = useQuery({
     queryKey: ["session"],
