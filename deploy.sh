@@ -87,21 +87,38 @@ pm2 start dist/server.js --name $TARGET_NAME --update-env --force
 echo "🔍 Starting Internal Check Service..."
 cd ../internal-check
 npm install --production
-DATABASE_URL="$DATABASE_URL" \
-PORT=3001 \
-pm2 start dist/index.js --name "outray-internal-check" --update-env --force
+# Restart if exists, otherwise start new (prevents duplicates without downtime)
+if pm2 list | grep -q "outray-internal-check"; then
+  DATABASE_URL="$DATABASE_URL" \
+  PORT=3001 \
+  pm2 restart "outray-internal-check" --update-env
+else
+  DATABASE_URL="$DATABASE_URL" \
+  PORT=3001 \
+  pm2 start dist/index.js --name "outray-internal-check"
+fi
 cd $APP_DIR
 
 # 1.6 Start Cron Service
 echo "⏰ Starting Cron Service..."
 cd ../cron
 npm install --production
-REDIS_URL="$REDIS_URL" \
-CLICKHOUSE_HOST="$CLICKHOUSE_URL" \
-CLICKHOUSE_USER="$CLICKHOUSE_USER" \
-CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD" \
-CLICKHOUSE_DATABASE="$CLICKHOUSE_DATABASE" \
-pm2 start dist/index.js --name "outray-cron" --update-env --force
+# Restart if exists, otherwise start new (prevents duplicates without downtime)
+if pm2 list | grep -q "outray-cron"; then
+  REDIS_URL="$REDIS_URL" \
+  CLICKHOUSE_HOST="$CLICKHOUSE_URL" \
+  CLICKHOUSE_USER="$CLICKHOUSE_USER" \
+  CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD" \
+  CLICKHOUSE_DATABASE="$CLICKHOUSE_DATABASE" \
+  pm2 restart "outray-cron" --update-env
+else
+  REDIS_URL="$REDIS_URL" \
+  CLICKHOUSE_HOST="$CLICKHOUSE_URL" \
+  CLICKHOUSE_USER="$CLICKHOUSE_USER" \
+  CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD" \
+  CLICKHOUSE_DATABASE="$CLICKHOUSE_DATABASE" \
+  pm2 start dist/index.js --name "outray-cron"
+fi
 cd $APP_DIR
 
 echo "⏳ Waiting for tunnel server to be ready..."
