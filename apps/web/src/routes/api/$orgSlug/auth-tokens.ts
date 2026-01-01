@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api/$orgSlug/auth-tokens")({
           })
           .returning();
 
-        return json({ token: newToken });
+        return json({ token: newToken.token });
       },
       DELETE: async ({ request, params }) => {
         const orgResult = await requireOrgFromSlug(request, params.orgSlug);
