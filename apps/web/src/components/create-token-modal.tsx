@@ -19,13 +19,18 @@ export function CreateTokenModal({ isOpen, onClose }: CreateTokenModalProps) {
 
   const createMutation = useMutation({
     mutationFn: async (name: string) => {
-      const response = await axios.post(`/api/${orgSlug}/auth-tokens`, {
+      const response = await axios.post<{
+        token: string;
+      }>(`/api/${orgSlug}/auth-tokens`, {
         name,
       });
+
       return response.data.token;
     },
     onSuccess: (token) => {
-      setCreatedToken(token);
+      if (token) {
+        setCreatedToken(token);
+      }
       setNewTokenName("");
       queryClient.invalidateQueries({
         queryKey: ["auth-tokens", orgSlug],
