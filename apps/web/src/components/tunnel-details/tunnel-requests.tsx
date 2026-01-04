@@ -1,8 +1,8 @@
 import { Search, MoreVertical, Radio } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useAppStore } from "@/lib/store";
 import { useParams } from "@tanstack/react-router";
 import { appClient } from "@/lib/app-client";
+import { authClient } from "@/lib/auth-client";
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1_073_741_824) {
@@ -50,8 +50,8 @@ export function TunnelRequests({ tunnelId }: TunnelRequestsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("live");
   const [isLoading, setIsLoading] = useState(false);
   const { orgSlug } = useParams({ from: "/$orgSlug/tunnels/$tunnelId" });
-  const { selectedOrganization } = useAppStore();
-  const activeOrgId = selectedOrganization?.id;
+  const { data: organizations = [] } = authClient.useListOrganizations();
+  const activeOrgId = organizations?.find((org) => org.slug === orgSlug)?.id;
   const wsRef = useRef<WebSocket | null>(null);
 
   const activeIndex = TIME_RANGES.findIndex((r) => r.value === timeRange);
@@ -89,16 +89,15 @@ export function TunnelRequests({ tunnelId }: TunnelRequestsProps) {
 
   useEffect(() => {
     if (!activeOrgId || timeRange !== "live") {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
       return;
     }
 
     const wsUrl = import.meta.env.VITE_TUNNEL_URL;
     const ws = new WebSocket(`${wsUrl}/dashboard/events?orgId=${activeOrgId}`);
-    wsRef.current = ws;
+
+    ws.onopen = () => {
+      wsRef.current = ws;
+    };
 
     ws.onmessage = (event) => {
       try {
@@ -115,6 +114,12 @@ export function TunnelRequests({ tunnelId }: TunnelRequestsProps) {
         }
       } catch (e) {
         console.error("Failed to parse WebSocket message", e);
+      }
+    };
+
+    ws.onclose = () => {
+      if (wsRef.current === ws) {
+        wsRef.current = null;
       }
     };
 
