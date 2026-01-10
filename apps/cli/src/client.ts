@@ -22,6 +22,7 @@ export class OutRayClient {
   private forceTakeover = false;
   private reconnectAttempts = 0;
   private lastPongReceived = Date.now();
+  private noLog: boolean;
   private readonly PING_INTERVAL_MS = 25000; // 25 seconds
   private readonly PONG_TIMEOUT_MS = 10000; // 10 seconds to wait for pong
 
@@ -31,6 +32,7 @@ export class OutRayClient {
     apiKey?: string,
     subdomain?: string,
     customDomain?: string,
+    noLog: boolean = false,
   ) {
     this.localPort = localPort;
     this.serverUrl = serverUrl;
@@ -38,6 +40,7 @@ export class OutRayClient {
     this.subdomain = subdomain;
     this.customDomain = customDomain;
     this.requestedSubdomain = subdomain;
+    this.noLog = noLog;
   }
 
   public start(): void {
@@ -207,10 +210,12 @@ export class OutRayClient {
                 ? chalk.cyan
                 : chalk.green;
 
-        console.log(
-          chalk.dim("←") +
-            ` ${chalk.bold(message.method)} ${message.path} ${statusColor(statusCode)} ${chalk.dim(`${duration}ms`)}`,
-        );
+        if (!this.noLog) {
+          console.log(
+            chalk.dim("←") +
+              ` ${chalk.bold(message.method)} ${message.path} ${statusColor(statusCode)} ${chalk.dim(`${duration}ms`)}`,
+          );
+        }
 
         const bodyBuffer = Buffer.concat(chunks);
         const bodyBase64 =
@@ -230,10 +235,12 @@ export class OutRayClient {
 
     req.on("error", (err) => {
       const duration = Date.now() - startTime;
-      console.log(
-        chalk.dim("←") +
-          ` ${chalk.bold(message.method)} ${message.path} ${chalk.red("502")} ${chalk.dim(`${duration}ms`)} ${chalk.red(err.message)}`,
-      );
+      if (!this.noLog) {
+        console.log(
+          chalk.dim("←") +
+            ` ${chalk.bold(message.method)} ${message.path} ${chalk.red("502")} ${chalk.dim(`${duration}ms`)} ${chalk.red(err.message)}`,
+        );
+      }
 
       const errorResponse: TunnelResponseMessage = {
         type: "response",

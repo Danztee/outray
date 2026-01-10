@@ -381,6 +381,9 @@ function printHelp() {
     chalk.cyan("  --remote-port <port>   Remote port (TCP/UDP only)"),
   );
   console.log(chalk.cyan("  --key <token>          Override auth token"));
+  console.log(
+    chalk.cyan("  --no-logs              Disable tunnel request logs"),
+  );
   console.log(chalk.cyan("  --dev                  Use dev environment"));
   console.log(chalk.cyan("  -v, --version          Show version"));
   console.log(chalk.cyan("  -h, --help             Show this help message"));
@@ -624,6 +627,9 @@ async function main() {
     }
   }
 
+  // Handle --no-logs flag to disable tunnel request logs
+  const noLogs = remainingArgs.includes("--no-logs");
+
   // Load and validate config
   let config = configManager.load();
 
@@ -699,6 +705,7 @@ async function main() {
       apiKey,
       "localhost",
       remotePort,
+      noLogs,
     );
   } else if (tunnelProtocol === "udp") {
     client = new UDPTunnelClient(
@@ -707,6 +714,7 @@ async function main() {
       apiKey,
       "localhost",
       remotePort,
+      noLogs,
     );
   } else {
     client = new OutRayClient(
@@ -715,6 +723,7 @@ async function main() {
       apiKey,
       subdomain,
       customDomain,
+      noLogs,
     );
   }
 

@@ -16,6 +16,7 @@ export class UDPTunnelClient {
   private shouldReconnect = true;
   private assignedPort: number | null = null;
   private socket: dgram.Socket | null = null;
+  private noLog: boolean;
 
   constructor(
     localPort: number,
@@ -23,12 +24,14 @@ export class UDPTunnelClient {
     apiKey?: string,
     localHost: string = "localhost",
     remotePort?: number,
+    noLog: boolean = false,
   ) {
     this.localPort = localPort;
     this.localHost = localHost;
     this.serverUrl = serverUrl;
     this.apiKey = apiKey;
     this.remotePort = remotePort;
+    this.noLog = noLog;
   }
 
   public start(): void {
@@ -141,12 +144,16 @@ export class UDPTunnelClient {
     const { packetId, sourceAddress, sourcePort, data } = message;
     const buffer = Buffer.from(data, "base64");
 
-    console.log(chalk.dim(`← UDP packet from ${sourceAddress}:${sourcePort}`));
+    if (!this.noLog) {
+      console.log(
+        chalk.dim(`← UDP packet from ${sourceAddress}:${sourcePort}`),
+      );
+    }
 
     // Forward to local service
     if (this.socket) {
       this.socket.send(buffer, this.localPort, this.localHost, (err) => {
-        if (err) {
+        if (err && !this.noLog) {
           console.log(chalk.dim(`UDP forward error: ${err.message}`));
         }
       });

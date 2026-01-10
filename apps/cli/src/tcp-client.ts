@@ -21,6 +21,7 @@ export class TCPTunnelClient {
   private shouldReconnect = true;
   private assignedPort: number | null = null;
   private connections = new Map<string, net.Socket>();
+  private noLog: boolean;
 
   constructor(
     localPort: number,
@@ -28,12 +29,14 @@ export class TCPTunnelClient {
     apiKey?: string,
     localHost: string = "localhost",
     remotePort?: number,
+    noLog: boolean = false,
   ) {
     this.localPort = localPort;
     this.localHost = localHost;
     this.serverUrl = serverUrl;
     this.apiKey = apiKey;
     this.remotePort = remotePort;
+    this.noLog = noLog;
   }
 
   public start(): void {
@@ -151,7 +154,9 @@ export class TCPTunnelClient {
     const socket = net.createConnection(
       { port: this.localPort, host: this.localHost },
       () => {
-        console.log(chalk.dim(`← New TCP connection: ${connectionId}`));
+        if (!this.noLog) {
+          console.log(chalk.dim(`← New TCP connection: ${connectionId}`));
+        }
       },
     );
 
@@ -159,7 +164,9 @@ export class TCPTunnelClient {
 
     // Forward data from local service to remote
     socket.on("data", (data) => {
-      console.log(chalk.dim(`← Got ${data.length} bytes from local service`));
+      if (!this.noLog) {
+        console.log(chalk.dim(`← Got ${data.length} bytes from local service`));
+      }
       if (this.ws?.readyState === WebSocket.OPEN) {
         const response: TCPDataMessage = {
           type: "tcp_data",
@@ -167,7 +174,9 @@ export class TCPTunnelClient {
           data: data.toString("base64"),
         };
         this.ws.send(encodeMessage(response));
-        console.log(chalk.dim(`← Sent response back to server`));
+        if (!this.noLog) {
+          console.log(chalk.dim(`← Sent response back to server`));
+        }
       }
     });
 
@@ -183,9 +192,11 @@ export class TCPTunnelClient {
     });
 
     socket.on("error", (err) => {
-      console.log(
-        chalk.dim(`TCP connection error ${connectionId}: ${err.message}`),
-      );
+      if (!this.noLog) {
+        console.log(
+          chalk.dim(`TCP connection error ${connectionId}: ${err.message}`),
+        );
+      }
       this.connections.delete(connectionId);
       if (this.ws?.readyState === WebSocket.OPEN) {
         const closeMsg: TCPCloseMessage = {
@@ -201,14 +212,18 @@ export class TCPTunnelClient {
     const socket = this.connections.get(message.connectionId);
     if (socket) {
       const data = Buffer.from(message.data, "base64");
-      console.log(
-        chalk.dim(`→ Forwarding ${data.length} bytes to local service`),
-      );
+      if (!this.noLog) {
+        console.log(
+          chalk.dim(`→ Forwarding ${data.length} bytes to local service`),
+        );
+      }
       socket.write(data);
     } else {
-      console.log(
-        chalk.dim(`⚠ No connection found for ${message.connectionId}`),
-      );
+      if (!this.noLog) {
+        console.log(
+          chalk.dim(`⚠ No connection found for ${message.connectionId}`),
+        );
+      }
     }
   }
 
