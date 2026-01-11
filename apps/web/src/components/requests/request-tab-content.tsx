@@ -9,6 +9,10 @@ interface RequestTabContentProps {
 }
 
 export function RequestTabContent({ request, details, copiedField, onCopy }: RequestTabContentProps) {
+  const formatHeaderValue = (value: string | string[]): string => {
+    return Array.isArray(value) ? value.join(', ') : value;
+  };
+
   return (
     <>
       {/* General Info */}
@@ -20,7 +24,7 @@ export function RequestTabContent({ request, details, copiedField, onCopy }: Req
           <div className="flex justify-between">
             <span className="text-gray-500">URL</span>
             <span className="text-gray-300 font-mono">
-              https://{request.host}{request.path}
+              {request.host.includes('localhost') ? 'http' : 'https'}://{request.host}{request.path}
             </span>
           </div>
           <div className="flex justify-between">
@@ -49,7 +53,7 @@ export function RequestTabContent({ request, details, copiedField, onCopy }: Req
           {Object.entries(details.headers).map(([key, value]) => (
             <div key={key} className="flex gap-2">
               <span className="text-accent">{key}:</span>
-              <span className="text-gray-300 break-all">{value}</span>
+              <span className="text-gray-300 break-all">{formatHeaderValue(value)}</span>
             </div>
           ))}
         </div>
