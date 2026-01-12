@@ -53,13 +53,11 @@ export const Route = createFileRoute("/api/$orgSlug/settings")({
               id: crypto.randomUUID(),
               organizationId: organization.id,
               fullCaptureEnabled,
-              updatedAt: new Date(),
             })
             .onConflictDoUpdate({
               target: organizationSettings.organizationId,
               set: {
                 fullCaptureEnabled,
-                updatedAt: new Date(),
               },
             });
 
