@@ -35,6 +35,17 @@ export const Route = createFileRoute("/admin/charts")({
   component: AdminChartsPage,
 });
 
+// Derive types from the API client
+type AdminChartsApiResponse = Awaited<ReturnType<typeof appClient.admin.charts>>;
+type AdminChartsData = Exclude<AdminChartsApiResponse, { error: string }>;
+
+interface ChartDataItem {
+  name: string;
+  value: number;
+  color: string;
+  [key: string]: string | number;
+}
+
 const COLORS = {
   primary: "#FFA62B",
   secondary: "#3B82F6",
@@ -59,7 +70,7 @@ const tooltipStyle = {
 
 function AdminChartsPage() {
   const token = useAdminStore((s) => s.token);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AdminChartsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -95,14 +106,14 @@ function AdminChartsPage() {
   };
 
   // Prepare verification data for pie chart
-  const verificationData = data.verificationStatus.map((v: any) => ({
+  const verificationData: ChartDataItem[] = data.verificationStatus.map((v) => ({
     name: v.verified ? "Verified" : "Unverified",
     value: v.count,
     color: v.verified ? COLORS.quaternary : COLORS.danger,
   }));
 
   // Prepare subscription status data
-  const subStatusData = data.subStatus.map((s: any) => ({
+  const subStatusData: ChartDataItem[] = data.subStatus.map((s) => ({
     name: s.status.charAt(0).toUpperCase() + s.status.slice(1),
     value: s.count,
     color:
@@ -114,7 +125,7 @@ function AdminChartsPage() {
   }));
 
   // Prepare protocol data
-  const protocolData = data.protocolDist.map((p: any) => ({
+  const protocolData: ChartDataItem[] = data.protocolDist.map((p) => ({
     name: p.protocol.toUpperCase(),
     value: p.count,
     color: PROTOCOL_COLORS[p.protocol] || COLORS.gray,
@@ -339,7 +350,7 @@ function AdminChartsPage() {
                   paddingAngle={3}
                   dataKey="value"
                 >
-                  {protocolData.map((entry: any, index: number) => (
+                  {protocolData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -348,7 +359,7 @@ function AdminChartsPage() {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-6 mt-2">
-            {protocolData.map((item: any) => (
+            {protocolData.map((item) => (
               <div key={item.name} className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-gray-400">{item.name}</span>
@@ -377,7 +388,7 @@ function AdminChartsPage() {
                   paddingAngle={3}
                   dataKey="value"
                 >
-                  {verificationData.map((entry: any, index: number) => (
+                  {verificationData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -386,7 +397,7 @@ function AdminChartsPage() {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-6 mt-2">
-            {verificationData.map((item: any) => (
+            {verificationData.map((item) => (
               <div key={item.name} className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-gray-400">{item.name}</span>
@@ -415,7 +426,7 @@ function AdminChartsPage() {
                   paddingAngle={3}
                   dataKey="value"
                 >
-                  {subStatusData.map((entry: any, index: number) => (
+                  {subStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -424,7 +435,7 @@ function AdminChartsPage() {
             </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-6 mt-2">
-            {subStatusData.map((item: any) => (
+            {subStatusData.map((item) => (
               <div key={item.name} className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-gray-400">{item.name}</span>
