@@ -169,7 +169,7 @@ export class HTTPProxy {
               responseBody = responseBuffer.toString("base64");
             } else {
               responseBody = responseBuffer.subarray(0, maxBodySize).toString("base64");
-              responseBodySize = maxBodySize;
+              responseBodySize = responseBuffer.subarray(0, maxBodySize).length;
             }
           }
 
