@@ -3,7 +3,7 @@ import { json } from "@tanstack/react-start";
 import { db } from "../../../db";
 import { users, members, sessions } from "../../../db/schema";
 import { redis } from "../../../lib/redis";
-import { sql, count, desc, like, or, eq } from "drizzle-orm";
+import { sql, count, desc, like, or, inArray } from "drizzle-orm";
 
 export const Route = createFileRoute("/api/admin/users")({
   server: {
@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/admin/users")({
                     count: count(),
                   })
                   .from(members)
-                  .where(sql`${members.userId} IN ${userIds}`)
+                  .where(inArray(members.userId, userIds))
                   .groupBy(members.userId)
               : [];
 
@@ -91,7 +91,7 @@ export const Route = createFileRoute("/api/admin/users")({
                     ),
                   })
                   .from(sessions)
-                  .where(sql`${sessions.userId} IN ${userIds}`)
+                  .where(inArray(sessions.userId, userIds))
                   .groupBy(sessions.userId)
               : [];
 
