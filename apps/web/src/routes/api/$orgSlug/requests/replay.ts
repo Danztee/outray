@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
 import { requireOrgFromSlug } from "../../../../lib/org";
+import { validateUrl } from "../../../../lib/url-validator";
 
 // Maximum allowed request body size (10MB)
 const MAX_BODY_SIZE = 10 * 1024 * 1024;
@@ -28,6 +29,15 @@ export const Route = createFileRoute("/api/$orgSlug/requests/replay")({
           if (!url || !method) {
             return json(
               { error: "url and method are required" },
+              { status: 400 }
+            );
+          }
+
+          // Validate URL to prevent SSRF attacks
+          const urlValidation = validateUrl(url);
+          if (!urlValidation.valid) {
+            return json(
+              { error: urlValidation.error || "Invalid URL" },
               { status: 400 }
             );
           }
