@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { redis } from "../../../lib/redis";
 
 const PASSPHRASE = process.env.ADMIN_PASSPHRASE;
-const TOKEN_TTL_SECONDS = 12 * 60 * 60; // 12h
+const TOKEN_TTL_SECONDS = 60 * 60; // 1h
 
 export const Route = createFileRoute("/api/admin/login")({
   server: {
