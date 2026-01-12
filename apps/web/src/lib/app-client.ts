@@ -120,6 +120,152 @@ export const appClient = {
       apiCall<{ token: string }>("post", `/api/admin/login`, {
         data: { phrase },
       }),
+
+    overview: async (token: string) =>
+      apiCall<{
+        users: { total: number; growth: number; newToday: number };
+        organizations: { total: number; growth: number };
+        tunnels: { active: number; total: number };
+        subscriptions: {
+          byPlan: Record<string, number>;
+          mrr: number;
+        };
+      }>("get", `/api/admin/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    users: async (
+      token: string,
+      params: { page?: number; limit?: number; search?: string }
+    ) =>
+      apiCall<{
+        users: Array<{
+          id: string;
+          name: string;
+          email: string;
+          emailVerified: boolean;
+          image: string | null;
+          createdAt: Date;
+          orgCount: number;
+          lastActive: Date | null;
+        }>;
+        total: number;
+        page: number;
+        totalPages: number;
+      }>("get", `/api/admin/users`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    organizations: async (
+      token: string,
+      params: { page?: number; limit?: number; search?: string }
+    ) =>
+      apiCall<{
+        organizations: Array<{
+          id: string;
+          name: string;
+          slug: string;
+          logo: string | null;
+          createdAt: Date;
+          memberCount: number;
+          activeTunnels: number;
+          subscription: { plan: string; status: string };
+        }>;
+        total: number;
+        page: number;
+        totalPages: number;
+      }>("get", `/api/admin/organizations`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    subscriptions: async (
+      token: string,
+      params: { page?: number; limit?: number; plan?: string }
+    ) =>
+      apiCall<{
+        subscriptions: Array<{
+          id: string;
+          organizationId: string;
+          plan: string;
+          status: string;
+          currentPeriodEnd: Date | null;
+          cancelAtPeriodEnd: boolean;
+          createdAt: Date;
+          updatedAt: Date;
+          orgName: string | null;
+          orgSlug: string | null;
+        }>;
+        total: number;
+        page: number;
+        totalPages: number;
+        stats: {
+          mrr: number;
+          arr: number;
+          totalActive: number;
+          totalCancelled: number;
+          activeByPlan: Record<string, number>;
+          recentChanges: number;
+        };
+      }>("get", `/api/admin/subscriptions`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    tunnels: async (
+      token: string,
+      params: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        protocol?: string;
+        active?: boolean;
+      }
+    ) =>
+      apiCall<{
+        tunnels: Array<{
+          id: string;
+          url: string;
+          name: string | null;
+          protocol: string;
+          remotePort: number | null;
+          lastSeenAt: Date | null;
+          createdAt: Date;
+          userName: string | null;
+          userEmail: string | null;
+          orgName: string | null;
+          orgSlug: string | null;
+          isOnline: boolean;
+        }>;
+        total: number;
+        page: number;
+        totalPages: number;
+        stats: {
+          total: number;
+          active: number;
+          byProtocol: Record<string, number>;
+        };
+      }>("get", `/api/admin/tunnels`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    charts: async (token: string) =>
+      apiCall<{
+        userSignups: Array<{ date: string; count: number }>;
+        orgGrowth: Array<{ date: string; count: number }>;
+        subChanges: Array<{ date: string; plan: string; count: number }>;
+        protocolDist: Array<{ protocol: string; count: number }>;
+        hourlyRequests: Array<{ hour: string; requests: number }>;
+        verificationStatus: Array<{ verified: boolean; count: number }>;
+        subStatus: Array<{ status: string; count: number }>;
+        topOrgsByTunnels: Array<{ orgId: string; orgName: string; tunnelCount: number }>;
+        weeklyTunnelTrend: Array<{ day: string; avg: number; max: number }>;
+        cumulativeGrowth: Array<{ date: string; total: number }>;
+      }>("get", `/api/admin/charts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
   },
 
   cli: {
