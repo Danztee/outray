@@ -83,6 +83,7 @@ export class WSHandler {
     bandwidthLimit?: number;
     retentionDays?: number;
     plan?: string;
+    fullCaptureEnabled?: boolean;
   }> {
     try {
       const response = await fetch(`${this.webApiUrl}/tunnel/auth`, {
@@ -100,6 +101,7 @@ export class WSHandler {
         bandwidthLimit?: number;
         retentionDays?: number;
         plan?: string;
+        fullCaptureEnabled?: boolean;
       };
     } catch (error) {
       console.error("Failed to validate Auth Token:", error);
@@ -232,6 +234,7 @@ export class WSHandler {
             let bandwidthLimit: number | undefined;
             let retentionDays: number | undefined;
             let plan: string | undefined;
+            let fullCaptureEnabled: boolean | undefined;
 
             if (message.apiKey) {
               const authResult = await this.validateAuthToken(message.apiKey);
@@ -252,6 +255,7 @@ export class WSHandler {
               bandwidthLimit = authResult.bandwidthLimit;
               retentionDays = authResult.retentionDays;
               plan = authResult.plan;
+              fullCaptureEnabled = authResult.fullCaptureEnabled;
               console.log(
                 `Authenticated organization: ${authResult.organization?.name}`,
               );
@@ -332,6 +336,7 @@ export class WSHandler {
                   dbTunnelId,
                   bandwidthLimit,
                   retentionDays,
+                  fullCaptureEnabled,
                 });
 
                 tunnelId = tunnelIdForProtocol;
@@ -408,6 +413,7 @@ export class WSHandler {
                   dbTunnelId,
                   bandwidthLimit,
                   retentionDays,
+                  fullCaptureEnabled,
                 });
 
                 tunnelId = tunnelIdForProtocol;
@@ -500,6 +506,7 @@ export class WSHandler {
                   dbTunnelId,
                   bandwidthLimit,
                   plan,
+                  fullCaptureEnabled,
                 },
               );
 
@@ -566,6 +573,7 @@ export class WSHandler {
                     userId,
                     bandwidthLimit,
                     retentionDays,
+                    fullCaptureEnabled,
                   },
                   message.forceTakeover || false,
                 );
@@ -602,6 +610,7 @@ export class WSHandler {
                       userId,
                       bandwidthLimit,
                       retentionDays,
+                      fullCaptureEnabled,
                     },
                   );
                   if (reservationAcquired) {
@@ -623,6 +632,7 @@ export class WSHandler {
                     userId,
                     bandwidthLimit,
                     retentionDays,
+                    fullCaptureEnabled,
                   },
                 );
                 if (reservationAcquired) {
@@ -701,6 +711,7 @@ export class WSHandler {
                 bandwidthLimit,
                 retentionDays,
                 plan,
+                fullCaptureEnabled,
               },
             );
 

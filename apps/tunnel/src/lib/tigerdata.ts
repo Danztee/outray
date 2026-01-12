@@ -35,6 +35,20 @@ export interface TunnelEvent {
   user_agent: string;
 }
 
+export interface RequestCapture {
+  id: string;
+  timestamp: number;
+  tunnel_id: string;
+  organization_id: string;
+  retention_days: number;
+  request_headers: Record<string, string | string[]>;
+  request_body: string | null;
+  request_body_size: number;
+  response_headers: Record<string, string | string[]>;
+  response_body: string | null;
+  response_body_size: number;
+}
+
 export async function checkTimescaleDBConnection(): Promise<boolean> {
   try {
     const client = await pool.connect();
@@ -115,11 +129,82 @@ class TimescaleDBLogger {
   public async shutdown() {
     clearInterval(this.flushInterval);
     await this.flush();
-    await pool.end();
   }
 }
 
 export const logger = new TimescaleDBLogger();
+
+class RequestCaptureLogger {
+  private buffer: RequestCapture[] = [];
+  private flushInterval: NodeJS.Timeout;
+  private readonly BATCH_SIZE = 20; // Conservative batch size for large payloads
+  private readonly FLUSH_INTERVAL_MS = 10000; // More frequent flushes
+
+  constructor() {
+    this.flushInterval = setInterval(() => {
+      void this.flush();
+    }, this.FLUSH_INTERVAL_MS);
+  }
+
+  public log(capture: RequestCapture) {
+    this.buffer.push(capture);
+    if (this.buffer.length >= this.BATCH_SIZE) {
+      void this.flush();
+    }
+  }
+
+  private async flush() {
+    if (this.buffer.length === 0) return;
+
+    const captures = [...this.buffer];
+    this.buffer = [];
+
+    try {
+      // Build batch insert query
+      const values: unknown[] = [];
+      const placeholders: string[] = [];
+
+      captures.forEach((capture, i) => {
+        const offset = i * 11;
+        placeholders.push(
+          `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11})`
+        );
+        values.push(
+          capture.id,
+          new Date(capture.timestamp),
+          capture.tunnel_id,
+          capture.organization_id,
+          capture.retention_days,
+          JSON.stringify(capture.request_headers),
+          capture.request_body,
+          capture.request_body_size,
+          JSON.stringify(capture.response_headers),
+          capture.response_body,
+          capture.response_body_size
+        );
+      });
+
+      const query = `
+        INSERT INTO request_captures (
+          id, timestamp, tunnel_id, organization_id, retention_days,
+          request_headers, request_body, request_body_size,
+          response_headers, response_body, response_body_size
+        ) VALUES ${placeholders.join(", ")}
+      `;
+
+      await execute(query, values);
+    } catch (error) {
+      console.error("Failed to flush request captures to TimescaleDB:", error);
+    }
+  }
+
+  public async shutdown() {
+    clearInterval(this.flushInterval);
+    await this.flush();
+  }
+}
+
+export const requestCaptureLogger = new RequestCaptureLogger();
 
 // Protocol events for TCP/UDP tunnels
 export interface ProtocolEvent {
@@ -308,3 +393,15 @@ class ProtocolLogger {
 }
 
 export const protocolLogger = new ProtocolLogger();
+
+/**
+ * Shuts down all loggers and closes the database connection pool.
+ * This should be called when the server is shutting down to ensure
+ * all buffered data is flushed before the process exits.
+ */
+export async function shutdownLoggers(): Promise<void> {
+  await logger.shutdown();
+  await requestCaptureLogger.shutdown();
+  await protocolLogger.shutdown();
+  await pool.end();
+}

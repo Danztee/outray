@@ -2,15 +2,72 @@ import { useState } from "react";
 import { X, Copy, Play, ArrowDownToLine, ArrowUpFromLine, Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { TunnelEvent, InspectorTab } from "./types";
-import { getMockRequestDetails, getMockResponseDetails, generateCurl } from "./utils";
+import { generateCurl } from "./utils";
 import { RequestTabContent } from "./request-tab-content";
 import { ResponseTabContent } from "./response-tab-content";
 import { FullCaptureDisabledContent } from "./full-capture-disabled-content";
+import { useRequestCapture } from "./use-request-capture";
+import { ReplayModal } from "./replay-modal";
+
+function SkeletonLoader() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      {/* General Info Skeleton */}
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/10">
+          <div className="h-4 w-16 bg-white/10 rounded" />
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex justify-between">
+            <div className="h-3 w-12 bg-white/10 rounded" />
+            <div className="h-3 w-48 bg-white/10 rounded" />
+          </div>
+          <div className="flex justify-between">
+            <div className="h-3 w-16 bg-white/10 rounded" />
+            <div className="h-3 w-12 bg-white/10 rounded" />
+          </div>
+          <div className="flex justify-between">
+            <div className="h-3 w-20 bg-white/10 rounded" />
+            <div className="h-3 w-24 bg-white/10 rounded" />
+          </div>
+        </div>
+      </div>
+
+      {/* Headers Skeleton */}
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+          <div className="h-4 w-16 bg-white/10 rounded" />
+          <div className="h-6 w-6 bg-white/10 rounded" />
+        </div>
+        <div className="p-4 space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex gap-2">
+              <div className="h-3 w-24 bg-white/10 rounded" />
+              <div className="h-3 flex-1 bg-white/10 rounded" style={{ maxWidth: `${60 + Math.random() * 40}%` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Body Skeleton */}
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+          <div className="h-4 w-12 bg-white/10 rounded" />
+          <div className="h-6 w-6 bg-white/10 rounded" />
+        </div>
+        <div className="p-4 space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-3 bg-white/10 rounded" style={{ width: `${70 + Math.random() * 30}%` }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface RequestInspectorDrawerProps {
   request: TunnelEvent | null;
   onClose: () => void;
-  onReplay: () => void;
   fullCaptureEnabled: boolean;
   orgSlug: string;
 }
@@ -18,12 +75,14 @@ interface RequestInspectorDrawerProps {
 export function RequestInspectorDrawer({
   request,
   onClose,
-  onReplay,
   fullCaptureEnabled,
   orgSlug,
 }: RequestInspectorDrawerProps) {
   const [activeTab, setActiveTab] = useState<InspectorTab>("request");
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showReplayModal, setShowReplayModal] = useState(false);
+  
+  const { capture, loading, error } = useRequestCapture(orgSlug, request);
 
   const copyToClipboard = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text);
@@ -33,8 +92,36 @@ export function RequestInspectorDrawer({
 
   if (!request) return null;
 
-  const requestDetails = getMockRequestDetails(request);
-  const responseDetails = getMockResponseDetails(request);
+  // Extract query params from path
+  const getQueryParams = (path: string) => {
+    if (!path.includes("?")) return {};
+    const searchParams = new URLSearchParams(path.split("?")[1]);
+    const params: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+    return params;
+  };
+
+  // Create request details from real data or fallback to basic info
+  const requestDetails = capture ? {
+    headers: capture.request.headers,
+    queryParams: getQueryParams(request.path),
+    body: capture.request.body,
+  } : {
+    headers: {
+      Host: request.host,
+      "User-Agent": request.user_agent,
+      "X-Forwarded-For": request.client_ip,
+    },
+    queryParams: getQueryParams(request.path),
+    body: null,
+  };
+
+  const responseDetails = capture ? {
+    headers: capture.response.headers,
+    body: capture.response.body,
+  } : null;
 
   const tabs = [
     { id: "request" as InspectorTab, label: "Request", icon: ArrowUpFromLine },
@@ -89,40 +176,57 @@ export function RequestInspectorDrawer({
             {/* Actions */}
             {fullCaptureEnabled && (
               <div className="flex items-center gap-2 p-4 border-b border-white/10">
-                <button
-                  onClick={onReplay}
-                  className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-xl text-sm font-medium transition-colors"
-                >
-                  <Play size={16} />
-                  Replay Request
-                </button>
-                <button
-                  onClick={() => copyToClipboard(generateCurl(request), "curl")}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl text-sm font-medium transition-colors border border-white/10"
-                >
-                  {copiedField === "curl" ? <Check size={16} /> : <Copy size={16} />}
-                  {copiedField === "curl" ? "Copied!" : "Copy as cURL"}
-                </button>
+                {loading ? (
+                  <>
+                    <div className="h-9 w-32 bg-white/5 rounded-xl animate-pulse" />
+                    <div className="h-9 w-28 bg-white/5 rounded-xl animate-pulse" />
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowReplayModal(true)}
+                      disabled={!capture}
+                      className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-colors"
+                    >
+                      <Play size={16} />
+                      Replay Request
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(generateCurl(request), "curl")}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl text-sm font-medium transition-colors border border-white/10"
+                    >
+                      {copiedField === "curl" ? <Check size={16} /> : <Copy size={16} />}
+                      {copiedField === "curl" ? "Copied!" : "Copy as cURL"}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
-            {/* Tabs - only show when full capture is enabled */}
+            {/* Tabs - show skeleton when loading */}
             {fullCaptureEnabled && (
               <div className="flex items-center gap-1 p-4 border-b border-white/10">
-                {tabs.map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setActiveTab(id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      activeTab === id
-                        ? "bg-white/10 text-white"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {label}
-                  </button>
-                ))}
+                {loading ? (
+                  <>
+                    <div className="h-9 w-24 bg-white/5 rounded-lg animate-pulse" />
+                    <div className="h-9 w-24 bg-white/5 rounded-lg animate-pulse" />
+                  </>
+                ) : (
+                  tabs.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => setActiveTab(id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === id
+                          ? "bg-white/10 text-white"
+                          : "text-gray-400 hover:text-white hover:bg-white/5"
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {label}
+                    </button>
+                  ))
+                )}
               </div>
             )}
 
@@ -130,7 +234,26 @@ export function RequestInspectorDrawer({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {!fullCaptureEnabled ? (
                 <FullCaptureDisabledContent request={request} orgSlug={orgSlug} />
-              ) : (
+              ) : loading ? (
+                <SkeletonLoader />
+              ) : error ? (
+                <div className="py-8">
+                  <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                    <p className="text-orange-300">{error}</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Showing basic request information instead.
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <RequestTabContent
+                      request={request}
+                      details={requestDetails}
+                      copiedField={copiedField}
+                      onCopy={copyToClipboard}
+                    />
+                  </div>
+                </div>
+              ) : capture ? (
                 <>
                   {activeTab === "request" && (
                     <RequestTabContent
@@ -140,7 +263,7 @@ export function RequestInspectorDrawer({
                       onCopy={copyToClipboard}
                     />
                   )}
-                  {activeTab === "response" && (
+                  {activeTab === "response" && responseDetails && (
                     <ResponseTabContent
                       details={responseDetails}
                       copiedField={copiedField}
@@ -148,6 +271,15 @@ export function RequestInspectorDrawer({
                     />
                   )}
                 </>
+              ) : (
+                <div className="py-8">
+                  <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-4">
+                    <p className="text-gray-300">No detailed request data available.</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      This request may have occurred before full capture was enabled.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -167,6 +299,17 @@ export function RequestInspectorDrawer({
               </div>
             </div>
           </motion.div>
+
+          {/* Replay Modal */}
+          {capture && (
+            <ReplayModal
+              isOpen={showReplayModal}
+              onClose={() => setShowReplayModal(false)}
+              request={request}
+              capture={capture}
+              orgSlug={orgSlug}
+            />
+          )}
         </>
       )}
     </AnimatePresence>

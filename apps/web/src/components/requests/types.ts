@@ -17,12 +17,28 @@ export type TimeRange = "live" | "1h" | "24h" | "7d" | "30d";
 export type InspectorTab = "request" | "response";
 
 export interface RequestDetails {
-  headers: Record<string, string>;
+  headers: Record<string, string | string[]>;
   queryParams: Record<string, string>;
   body: string | null;
 }
 
 export interface ResponseDetails {
-  headers: Record<string, string>;
-  body: string;
+  headers: Record<string, string | string[]>;
+  body: string | null;
+}
+
+export interface RequestCapture {
+  id: string;
+  timestamp: string;
+  tunnelId: string;
+  request: {
+    headers: Record<string, string | string[]>;
+    body: string | null;
+    bodySize: number;
+  };
+  response: {
+    headers: Record<string, string | string[]>;
+    body: string | null;
+    bodySize: number;
+  };
 }

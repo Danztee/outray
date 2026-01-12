@@ -50,6 +50,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAdminStatsRouteImport } from './routes/api/admin/stats'
 import { Route as ApiAdminLoginRouteImport } from './routes/api/admin/login'
 import { Route as ApiOrgSlugSubscriptionsRouteImport } from './routes/api/$orgSlug/subscriptions'
+import { Route as ApiOrgSlugSettingsRouteImport } from './routes/api/$orgSlug/settings'
 import { Route as ApiOrgSlugRequestsRouteImport } from './routes/api/$orgSlug/requests'
 import { Route as ApiOrgSlugAuthTokensRouteImport } from './routes/api/$orgSlug/auth-tokens'
 import { Route as OrgSlugTunnelsTunnelIdRouteImport } from './routes/$orgSlug/tunnels/$tunnelId'
@@ -65,6 +66,8 @@ import { Route as ApiOrgSlugStatsTunnelRouteImport } from './routes/api/$orgSlug
 import { Route as ApiOrgSlugStatsProtocolRouteImport } from './routes/api/$orgSlug/stats/protocol'
 import { Route as ApiOrgSlugStatsOverviewRouteImport } from './routes/api/$orgSlug/stats/overview'
 import { Route as ApiOrgSlugStatsBandwidthRouteImport } from './routes/api/$orgSlug/stats/bandwidth'
+import { Route as ApiOrgSlugRequestsReplayRouteImport } from './routes/api/$orgSlug/requests/replay'
+import { Route as ApiOrgSlugRequestsCaptureRouteImport } from './routes/api/$orgSlug/requests/capture'
 import { Route as ApiOrgSlugPortalPolarRouteImport } from './routes/api/$orgSlug/portal/polar'
 import { Route as ApiOrgSlugDomainsDomainIdRouteImport } from './routes/api/$orgSlug/domains/$domainId'
 import { Route as ApiOrgSlugTunnelsTunnelIdStopRouteImport } from './routes/api/$orgSlug/tunnels/$tunnelId.stop'
@@ -278,6 +281,11 @@ const ApiOrgSlugSubscriptionsRoute = ApiOrgSlugSubscriptionsRouteImport.update({
   path: '/api/$orgSlug/subscriptions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOrgSlugSettingsRoute = ApiOrgSlugSettingsRouteImport.update({
+  id: '/api/$orgSlug/settings',
+  path: '/api/$orgSlug/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOrgSlugRequestsRoute = ApiOrgSlugRequestsRouteImport.update({
   id: '/api/$orgSlug/requests',
   path: '/api/$orgSlug/requests',
@@ -358,6 +366,18 @@ const ApiOrgSlugStatsBandwidthRoute =
     path: '/api/$orgSlug/stats/bandwidth',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiOrgSlugRequestsReplayRoute =
+  ApiOrgSlugRequestsReplayRouteImport.update({
+    id: '/replay',
+    path: '/replay',
+    getParentRoute: () => ApiOrgSlugRequestsRoute,
+  } as any)
+const ApiOrgSlugRequestsCaptureRoute =
+  ApiOrgSlugRequestsCaptureRouteImport.update({
+    id: '/capture',
+    path: '/capture',
+    getParentRoute: () => ApiOrgSlugRequestsRoute,
+  } as any)
 const ApiOrgSlugPortalPolarRoute = ApiOrgSlugPortalPolarRouteImport.update({
   id: '/api/$orgSlug/portal/polar',
   path: '/api/$orgSlug/portal/polar',
@@ -410,7 +430,8 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/settings/profile': typeof OrgSlugSettingsProfileRoute
   '/$orgSlug/tunnels/$tunnelId': typeof OrgSlugTunnelsTunnelIdRoute
   '/api/$orgSlug/auth-tokens': typeof ApiOrgSlugAuthTokensRoute
-  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRoute
+  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRouteWithChildren
+  '/api/$orgSlug/settings': typeof ApiOrgSlugSettingsRoute
   '/api/$orgSlug/subscriptions': typeof ApiOrgSlugSubscriptionsRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/stats': typeof ApiAdminStatsRoute
@@ -431,6 +452,8 @@ export interface FileRoutesByFullPath {
   '/$orgSlug/tunnels': typeof OrgSlugTunnelsIndexRoute
   '/api/$orgSlug/domains/$domainId': typeof ApiOrgSlugDomainsDomainIdRouteWithChildren
   '/api/$orgSlug/portal/polar': typeof ApiOrgSlugPortalPolarRoute
+  '/api/$orgSlug/requests/capture': typeof ApiOrgSlugRequestsCaptureRoute
+  '/api/$orgSlug/requests/replay': typeof ApiOrgSlugRequestsReplayRoute
   '/api/$orgSlug/stats/bandwidth': typeof ApiOrgSlugStatsBandwidthRoute
   '/api/$orgSlug/stats/overview': typeof ApiOrgSlugStatsOverviewRoute
   '/api/$orgSlug/stats/protocol': typeof ApiOrgSlugStatsProtocolRoute
@@ -470,7 +493,8 @@ export interface FileRoutesByTo {
   '/$orgSlug/settings/profile': typeof OrgSlugSettingsProfileRoute
   '/$orgSlug/tunnels/$tunnelId': typeof OrgSlugTunnelsTunnelIdRoute
   '/api/$orgSlug/auth-tokens': typeof ApiOrgSlugAuthTokensRoute
-  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRoute
+  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRouteWithChildren
+  '/api/$orgSlug/settings': typeof ApiOrgSlugSettingsRoute
   '/api/$orgSlug/subscriptions': typeof ApiOrgSlugSubscriptionsRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/stats': typeof ApiAdminStatsRoute
@@ -491,6 +515,8 @@ export interface FileRoutesByTo {
   '/$orgSlug/tunnels': typeof OrgSlugTunnelsIndexRoute
   '/api/$orgSlug/domains/$domainId': typeof ApiOrgSlugDomainsDomainIdRouteWithChildren
   '/api/$orgSlug/portal/polar': typeof ApiOrgSlugPortalPolarRoute
+  '/api/$orgSlug/requests/capture': typeof ApiOrgSlugRequestsCaptureRoute
+  '/api/$orgSlug/requests/replay': typeof ApiOrgSlugRequestsReplayRoute
   '/api/$orgSlug/stats/bandwidth': typeof ApiOrgSlugStatsBandwidthRoute
   '/api/$orgSlug/stats/overview': typeof ApiOrgSlugStatsOverviewRoute
   '/api/$orgSlug/stats/protocol': typeof ApiOrgSlugStatsProtocolRoute
@@ -533,7 +559,8 @@ export interface FileRoutesById {
   '/$orgSlug/settings/profile': typeof OrgSlugSettingsProfileRoute
   '/$orgSlug/tunnels/$tunnelId': typeof OrgSlugTunnelsTunnelIdRoute
   '/api/$orgSlug/auth-tokens': typeof ApiOrgSlugAuthTokensRoute
-  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRoute
+  '/api/$orgSlug/requests': typeof ApiOrgSlugRequestsRouteWithChildren
+  '/api/$orgSlug/settings': typeof ApiOrgSlugSettingsRoute
   '/api/$orgSlug/subscriptions': typeof ApiOrgSlugSubscriptionsRoute
   '/api/admin/login': typeof ApiAdminLoginRoute
   '/api/admin/stats': typeof ApiAdminStatsRoute
@@ -554,6 +581,8 @@ export interface FileRoutesById {
   '/$orgSlug/tunnels/': typeof OrgSlugTunnelsIndexRoute
   '/api/$orgSlug/domains/$domainId': typeof ApiOrgSlugDomainsDomainIdRouteWithChildren
   '/api/$orgSlug/portal/polar': typeof ApiOrgSlugPortalPolarRoute
+  '/api/$orgSlug/requests/capture': typeof ApiOrgSlugRequestsCaptureRoute
+  '/api/$orgSlug/requests/replay': typeof ApiOrgSlugRequestsReplayRoute
   '/api/$orgSlug/stats/bandwidth': typeof ApiOrgSlugStatsBandwidthRoute
   '/api/$orgSlug/stats/overview': typeof ApiOrgSlugStatsOverviewRoute
   '/api/$orgSlug/stats/protocol': typeof ApiOrgSlugStatsProtocolRoute
@@ -598,6 +627,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels/$tunnelId'
     | '/api/$orgSlug/auth-tokens'
     | '/api/$orgSlug/requests'
+    | '/api/$orgSlug/settings'
     | '/api/$orgSlug/subscriptions'
     | '/api/admin/login'
     | '/api/admin/stats'
@@ -618,6 +648,8 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels'
     | '/api/$orgSlug/domains/$domainId'
     | '/api/$orgSlug/portal/polar'
+    | '/api/$orgSlug/requests/capture'
+    | '/api/$orgSlug/requests/replay'
     | '/api/$orgSlug/stats/bandwidth'
     | '/api/$orgSlug/stats/overview'
     | '/api/$orgSlug/stats/protocol'
@@ -658,6 +690,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels/$tunnelId'
     | '/api/$orgSlug/auth-tokens'
     | '/api/$orgSlug/requests'
+    | '/api/$orgSlug/settings'
     | '/api/$orgSlug/subscriptions'
     | '/api/admin/login'
     | '/api/admin/stats'
@@ -678,6 +711,8 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels'
     | '/api/$orgSlug/domains/$domainId'
     | '/api/$orgSlug/portal/polar'
+    | '/api/$orgSlug/requests/capture'
+    | '/api/$orgSlug/requests/replay'
     | '/api/$orgSlug/stats/bandwidth'
     | '/api/$orgSlug/stats/overview'
     | '/api/$orgSlug/stats/protocol'
@@ -720,6 +755,7 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels/$tunnelId'
     | '/api/$orgSlug/auth-tokens'
     | '/api/$orgSlug/requests'
+    | '/api/$orgSlug/settings'
     | '/api/$orgSlug/subscriptions'
     | '/api/admin/login'
     | '/api/admin/stats'
@@ -740,6 +776,8 @@ export interface FileRouteTypes {
     | '/$orgSlug/tunnels/'
     | '/api/$orgSlug/domains/$domainId'
     | '/api/$orgSlug/portal/polar'
+    | '/api/$orgSlug/requests/capture'
+    | '/api/$orgSlug/requests/replay'
     | '/api/$orgSlug/stats/bandwidth'
     | '/api/$orgSlug/stats/overview'
     | '/api/$orgSlug/stats/protocol'
@@ -770,7 +808,8 @@ export interface RootRouteChildren {
   InternalDomainCheckRoute: typeof InternalDomainCheckRoute
   InvitationsAcceptRoute: typeof InvitationsAcceptRoute
   ApiOrgSlugAuthTokensRoute: typeof ApiOrgSlugAuthTokensRoute
-  ApiOrgSlugRequestsRoute: typeof ApiOrgSlugRequestsRoute
+  ApiOrgSlugRequestsRoute: typeof ApiOrgSlugRequestsRouteWithChildren
+  ApiOrgSlugSettingsRoute: typeof ApiOrgSlugSettingsRoute
   ApiOrgSlugSubscriptionsRoute: typeof ApiOrgSlugSubscriptionsRoute
   ApiAdminLoginRoute: typeof ApiAdminLoginRoute
   ApiAdminStatsRoute: typeof ApiAdminStatsRoute
@@ -1089,6 +1128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOrgSlugSubscriptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/$orgSlug/settings': {
+      id: '/api/$orgSlug/settings'
+      path: '/api/$orgSlug/settings'
+      fullPath: '/api/$orgSlug/settings'
+      preLoaderRoute: typeof ApiOrgSlugSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/$orgSlug/requests': {
       id: '/api/$orgSlug/requests'
       path: '/api/$orgSlug/requests'
@@ -1194,6 +1240,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOrgSlugStatsBandwidthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/$orgSlug/requests/replay': {
+      id: '/api/$orgSlug/requests/replay'
+      path: '/replay'
+      fullPath: '/api/$orgSlug/requests/replay'
+      preLoaderRoute: typeof ApiOrgSlugRequestsReplayRouteImport
+      parentRoute: typeof ApiOrgSlugRequestsRoute
+    }
+    '/api/$orgSlug/requests/capture': {
+      id: '/api/$orgSlug/requests/capture'
+      path: '/capture'
+      fullPath: '/api/$orgSlug/requests/capture'
+      preLoaderRoute: typeof ApiOrgSlugRequestsCaptureRouteImport
+      parentRoute: typeof ApiOrgSlugRequestsRoute
+    }
     '/api/$orgSlug/portal/polar': {
       id: '/api/$orgSlug/portal/polar'
       path: '/api/$orgSlug/portal/polar'
@@ -1272,6 +1332,19 @@ const OrgSlugRouteChildren: OrgSlugRouteChildren = {
 const OrgSlugRouteWithChildren =
   OrgSlugRoute._addFileChildren(OrgSlugRouteChildren)
 
+interface ApiOrgSlugRequestsRouteChildren {
+  ApiOrgSlugRequestsCaptureRoute: typeof ApiOrgSlugRequestsCaptureRoute
+  ApiOrgSlugRequestsReplayRoute: typeof ApiOrgSlugRequestsReplayRoute
+}
+
+const ApiOrgSlugRequestsRouteChildren: ApiOrgSlugRequestsRouteChildren = {
+  ApiOrgSlugRequestsCaptureRoute: ApiOrgSlugRequestsCaptureRoute,
+  ApiOrgSlugRequestsReplayRoute: ApiOrgSlugRequestsReplayRoute,
+}
+
+const ApiOrgSlugRequestsRouteWithChildren =
+  ApiOrgSlugRequestsRoute._addFileChildren(ApiOrgSlugRequestsRouteChildren)
+
 interface ApiCliLoginRouteChildren {
   ApiCliLoginStatusRoute: typeof ApiCliLoginStatusRoute
 }
@@ -1328,7 +1401,8 @@ const rootRouteChildren: RootRouteChildren = {
   InternalDomainCheckRoute: InternalDomainCheckRoute,
   InvitationsAcceptRoute: InvitationsAcceptRoute,
   ApiOrgSlugAuthTokensRoute: ApiOrgSlugAuthTokensRoute,
-  ApiOrgSlugRequestsRoute: ApiOrgSlugRequestsRoute,
+  ApiOrgSlugRequestsRoute: ApiOrgSlugRequestsRouteWithChildren,
+  ApiOrgSlugSettingsRoute: ApiOrgSlugSettingsRoute,
   ApiOrgSlugSubscriptionsRoute: ApiOrgSlugSubscriptionsRoute,
   ApiAdminLoginRoute: ApiAdminLoginRoute,
   ApiAdminStatsRoute: ApiAdminStatsRoute,
